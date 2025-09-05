@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { Dropzone, DropzoneEmptyState } from '@/components/ui/dropzone';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, X, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner';
+import { Pill } from '@/components/ui/pill';
+import { Download, Loader2, X, ArrowUp, ArrowDown, Plus, Info } from 'lucide-react';
 import Image from 'next/image';
 
 interface BillUploadProps {
@@ -87,27 +89,23 @@ export function BillUpload({ onUpload, isUploading = false }: BillUploadProps) {
         <p className="text-gray-600">Upload multiple images of your bill (for long receipts) to extract data and export to Excel</p>
         
         {/* Instructions for multiple image ordering */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="text-left">
-              <h4 className="text-sm font-semibold text-blue-800 mb-2">
+        <Banner className="bg-blue-50 border border-blue-200 text-blue-900" inset>
+          <BannerIcon icon={Info} />
+          <BannerTitle className="text-left">
+            <div className="space-y-2">
+              <div className="text-sm font-semibold mb-2">
                 📋 Bill Image Ordering Guide
-              </h4>
-              <div className="text-sm text-blue-700 space-y-1">
-                <p><strong>• When uploading multiple images:</strong> Please arrange images in order from top to bottom of the bill</p>
-                <p><strong>• First image (#1):</strong> Bill header (store information, logo, receipt top)</p>
-                <p><strong>• Following images (#2, #3...):</strong> Product sections in the order they appear on the bill</p>
-                <p><strong>• Last image:</strong> Bill footer (subtotal, tax, total amount, payment info)</p>
-                <p><strong>• Use ↑↓ buttons:</strong> To reorder images if needed for accurate processing</p>
+              </div>
+              <div className="text-sm space-y-1">
+                <div><strong>• When uploading multiple images:</strong> Please arrange images in order from top to bottom of the bill</div>
+                <div><strong>• First image (#1):</strong> Bill header (store information, logo, receipt top)</div>
+                <div><strong>• Following images (#2, #3...):</strong> Product sections in the order they appear on the bill</div>
+                <div><strong>• Last image:</strong> Bill footer (subtotal, tax, total amount, payment info)</div>
+                <div><strong>• Use ↑↓ buttons:</strong> To reorder images if needed for accurate processing</div>
               </div>
             </div>
-          </div>
-        </div>
+          </BannerTitle>
+        </Banner>
       </div>
 
       <div className="space-y-4">
@@ -167,9 +165,9 @@ export function BillUpload({ onUpload, isUploading = false }: BillUploadProps) {
                   {/* File header with order info */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded">
+                      <Pill variant="secondary" className="text-xs font-semibold">
                         #{index + 1}
-                      </span>
+                      </Pill>
                       <div>
                         <p className="font-medium text-sm text-gray-900 truncate max-w-32">
                           {fileWithPreview.file.name}

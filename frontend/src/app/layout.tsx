@@ -17,13 +17,17 @@ export const metadata: Metadata = {
   description: "Convert your bill images to Excel spreadsheets using OCR technology. Upload multiple images of long receipts and get structured data instantly.",
   keywords: "OCR, bill, receipt, excel, converter, image to excel, bill processing",
   authors: [{ name: "Bill2Sheet" }],
-  viewport: "width=device-width, initial-scale=1",
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png" },
       { url: "/favicon.ico", type: "image/x-icon", sizes: "any" }
     ],
   },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
