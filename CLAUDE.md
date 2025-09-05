@@ -18,12 +18,13 @@ This is a Bill OCR to Excel application that extracts data from bill images and 
 
 ## Development Commands
 
+**CRITICAL:** Never use `npm run dev` for development. Always use `npm run typecheck` and `npm run lint` after any frontend changes.
+
 **Frontend (from `frontend/` directory):**
-- `npm run dev` - Start development server with Turbopack
+- `npm run typecheck` - Run TypeScript type checking (ALWAYS run after changes)
+- `npm run lint` - Run ESLint (ALWAYS run after changes)  
 - `npm run build` - Build for production with Turbopack
 - `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Run TypeScript type checking
 
 **Backend:** (Not yet implemented - will be Rust with Cargo)
 - `cargo run` - Run development server
@@ -49,8 +50,11 @@ Use the `mcp__shadcn__getComponents` and `mcp__shadcn__getComponent` tools to ex
 
 **Current shadcn components in use:**
 - Button component with variants (default, outline, ghost)
-- Dropzone component with drag-and-drop functionality
-- Lucide React icons (Download, Loader2, X, ArrowUp, ArrowDown, Plus)
+- Dropzone component with drag-and-drop functionality  
+- Banner component with BannerIcon and BannerTitle for instruction displays
+- Badge component for basic labeling
+- Pill component for enhanced badges with rounded styling
+- Lucide React icons (Download, Loader2, X, ArrowUp, ArrowDown, Plus, Info)
 
 ## API Endpoints
 
@@ -73,7 +77,10 @@ frontend/src/
 ├── components/
 │   ├── ui/                 # Shadcn UI components
 │   │   ├── button.tsx
-│   │   └── dropzone.tsx
+│   │   ├── dropzone.tsx
+│   │   ├── banner.tsx      # Banner component for info displays
+│   │   ├── badge.tsx       # Basic badge component
+│   │   └── pill.tsx        # Enhanced badge with rounded styling
 │   └── bill-upload.tsx     # Main upload component
 └── lib/
     └── utils.ts            # Utility functions
@@ -86,11 +93,12 @@ frontend/src/
 **Frontend:**
 - Next.js 15.5.2 with App Router
 - React 19.1.0 with TypeScript 5
-- Shadcn UI components (Button, Dropzone)
+- Shadcn UI components (Button, Dropzone, Banner, Badge, Pill)
 - TailwindCSS 4 with PostCSS
 - Lucide React icons
 - react-dropzone for file handling
 - class-variance-authority & clsx for styling
+- @radix-ui/react-use-controllable-state for component state management
 
 **Backend:** (To be added)
 - Axum for HTTP server
