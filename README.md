@@ -66,11 +66,3 @@ sequenceDiagram
 - Xử lý nhiều mẫu bill khác nhau
 
 ---
-
-## 📞 Đóng góp & liên hệ
-
-- PR/issue/new feature/welcome!
-- Liên hệ: [your-email@example.com]
-```
-
-[1](https://aistudio.google.com/prompts/new_chat)
