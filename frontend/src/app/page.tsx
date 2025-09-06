@@ -28,29 +28,38 @@ export default function Home() {
       });
 
       if (response.ok) {
-        // Get the Excel file from response
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        // Check if response is JSON (OCR result) or blob (Excel file)
+        const contentType = response.headers.get('content-type');
         
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `bill-data-${Date.now()}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        
-        // Cleanup
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        alert(`Successfully processed ${files.length} images! Excel file downloaded.`);
+        if (contentType && contentType.includes('application/json')) {
+          // Handle JSON response (OCR results)
+          const result = await response.json();
+          return result;
+        } else {
+          // Handle blob response (Excel file download)
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          
+          // Create download link
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `bill-data-${Date.now()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          alert(`Successfully processed ${files.length} images! Excel file downloaded.`);
+        }
       } else {
         const error = await response.text();
-        alert(`Error: ${error}`);
+        throw new Error(error);
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to process the bill images. Please try again.');
+      throw error;
     } finally {
       setIsUploading(false);
     }
@@ -58,7 +67,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full mx-auto">
         <BillUpload onUpload={handleFileUpload} isUploading={isUploading} />
       </div>
     </div>
