@@ -15,14 +15,14 @@ export default function Home() {
       const formData = new FormData();
       
       // Add all files to form data
-      files.forEach((file, index) => {
-        formData.append(`bill_image_${index}`, file);
+      files.forEach((file) => {
+        formData.append('bill_images', file);
       });
       
       // Add total count for backend reference
       formData.append('image_count', files.length.toString());
 
-      const response = await fetch('/api/ocr-bill', {
+      const response = await fetch('http://localhost:2011/api/ocr-bill', {
         method: 'POST',
         body: formData,
       });

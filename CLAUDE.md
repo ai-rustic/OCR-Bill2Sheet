@@ -18,7 +18,7 @@ This is a Bill OCR to Excel application that extracts data from bill images and 
 
 ## Development Commands
 
-**CRITICAL:** Never use `npm run dev` for development. Always use `npm run typecheck` and `npm run lint` after any frontend changes.
+**CRITICAL:** Never use `npm run dev` or `cargo run` unless explicitly requested by user. Always use `npm run typecheck` and `npm run lint` after any frontend changes.
 
 **Frontend (from `frontend/` directory):**
 - `npm run typecheck` - Run TypeScript type checking (ALWAYS run after changes)
@@ -26,8 +26,8 @@ This is a Bill OCR to Excel application that extracts data from bill images and 
 - `npm run build` - Build for production with Turbopack
 - `npm run start` - Start production server
 
-**Backend:** (Not yet implemented - will be Rust with Cargo)
-- `cargo run` - Run development server
+**Backend (from `backend/` directory):**
+- `cargo run` - Run development server on port 2011
 - `cargo build` - Build for production
 - `cargo test` - Run tests
 - `cargo clippy` - Run linter
@@ -59,10 +59,11 @@ Use the `mcp__shadcn__getComponents` and `mcp__shadcn__getComponent` tools to ex
 ## API Endpoints
 
 - `POST /api/ocr-bill`
+  - Server runs on port 2011 (http://0.0.0.0:2011)
   - Request: multipart/form-data with fields:
-    - `bill_image_0`, `bill_image_1`, etc. (File objects)
-    - `image_count` (string - total number of images)
-  - Response: Excel file (.xlsx) with MIME type `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+    - `bill_images` (File objects - multiple images supported)
+  - Response: Currently returns JSON {"message": "OK"} - Excel generation to be implemented
+  - CORS enabled with permissive policy
 
 ## File Structure
 
@@ -86,7 +87,13 @@ frontend/src/
     └── utils.ts            # Utility functions
 ```
 
-**Backend:** (To be implemented in Rust)
+**Backend (Rust with Axum):**
+```
+backend/
+├── src/
+│   └── main.rs             # Main server with /api/ocr-bill endpoint
+└── Cargo.toml              # Dependencies: Axum, tokio, serde, etc.
+```
 
 ## Key Dependencies
 
@@ -100,12 +107,14 @@ frontend/src/
 - class-variance-authority & clsx for styling
 - @radix-ui/react-use-controllable-state for component state management
 
-**Backend:** (To be added)
-- Axum for HTTP server
-- umya-spreadsheet for Excel generation
-- reqwest for Gemini API calls
-- Serde for JSON serialization
-- Multipart form handling
+**Backend (Rust):**
+- Axum 0.8.4 for HTTP server with multipart support
+- axum_typed_multipart 0.12.1 for typed multipart handling
+- tokio 1.47.1 for async runtime
+- serde 1.0 for JSON serialization
+- tower-http 0.6 for CORS middleware
+- umya-spreadsheet for Excel generation (to be added)
+- reqwest for Gemini API calls (to be added)
 
 ## Multi-Image Bill Processing
 
