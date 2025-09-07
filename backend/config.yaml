@@ -1,0 +1,11 @@
+# Configuration file for Bill2Sheet Backend Server
+server:
+  host: "0.0.0.0"
+  port: 2011
+
+gemini:
+  api_keys:
+    - "YOUR_GEMINI_API_KEY_1"
+    - "YOUR_GEMINI_API_KEY_2" 
+    - "YOUR_GEMINI_API_KEY_3"
+    # Add more API keys here for rotation to avoid rate limits
