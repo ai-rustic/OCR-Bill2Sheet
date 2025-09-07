@@ -10,9 +10,39 @@ interface FileWithPreview {
   id: string;
 }
 
+interface BillMeta {
+  bill_number: string;
+  seller: string;
+  buyer: string;
+  seller_tax_code: string;
+  buyer_tax_code: string;
+  bill_date: string;
+  total_amount: string;
+  vat_amount: string;
+  payment_method: string;
+  address: string;
+}
+
+interface LineItem {
+  no: number;
+  product_name: string;
+  quantity: string;
+  unit: string;
+  unit_price: string;
+  subtotal: string;
+}
+
+interface BillData {
+  bill_meta: BillMeta;
+  line_items: LineItem[];
+  notes: string;
+}
+
 interface OCRResult {
   success: boolean;
-  data?: Record<string, unknown>;
+  bill_data?: BillData;
+  message?: string;
+  processing_timestamp?: string;
   error?: string;
 }
 
@@ -64,11 +94,20 @@ export default function Home() {
           window.URL.revokeObjectURL(url);
           document.body.removeChild(a);
           
-          alert(`Successfully processed ${files.length} images! Excel file downloaded.`);
+          return { success: true, message: `Successfully processed ${files.length} images! Excel file downloaded.` };
         }
       } else {
-        const error = await response.text();
-        throw new Error(error);
+        const errorText = await response.text();
+        let errorMessage = 'Processing failed';
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorJson.message || errorText;
+        } catch {
+          errorMessage = errorText || 'Unknown error occurred';
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -89,18 +128,21 @@ export default function Home() {
       
       try {
         // Call the upload handler and wait for result
-        await handleFileUpload(selectedFiles.map(f => f.file));
+        const result = await handleFileUpload(selectedFiles.map(f => f.file));
         
         // Add delay to show the animation effect
         setTimeout(() => {
-          setOcrResults({
-            success: true,
-            data: {
-              message: "OCR processing completed successfully",
-              images_processed: selectedFiles.length,
-              extracted_data: "Sample extracted data will appear here..."
-            }
-          });
+          if (result) {
+            setOcrResults({
+              success: true,
+              ...result
+            });
+          } else {
+            setOcrResults({
+              success: false,
+              error: "No response received from server"
+            });
+          }
         }, 500);
       } catch (error) {
         setTimeout(() => {
