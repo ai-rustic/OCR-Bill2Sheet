@@ -5,7 +5,7 @@ server:
 
 gemini:
   api_keys:
-    - "YOUR_GEMINI_API_KEY_1"
-    - "YOUR_GEMINI_API_KEY_2" 
-    - "YOUR_GEMINI_API_KEY_3"
+    - "AIzaSyDWEmnJn8i3GdeIclfn1YSdAj6_6IKve7I"
+    # - "YOUR_GEMINI_API_KEY_2" 
+    # - "YOUR_GEMINI_API_KEY_3"
     # Add more API keys here for rotation to avoid rate limits

@@ -34,9 +34,6 @@ export default function Home() {
       files.forEach((file) => {
         formData.append('bill_images', file);
       });
-      
-      // Add total count for backend reference
-      formData.append('image_count', files.length.toString());
 
       const response = await fetch('http://localhost:2011/api/ocr-bill', {
         method: 'POST',
