@@ -119,7 +119,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className={`w-full transition-all duration-700 ease-in-out ${showResults ? 'max-w-full' : 'max-w-2xl mx-auto'}`}>
-        <div className={`transition-all duration-700 ease-in-out ${showResults ? 'lg:flex lg:h-screen lg:box-border' : ''}`}>
+        <div className={`transition-all duration-700 ease-in-out ${showResults ? 'lg:flex lg:box-border' : ''}`}>
           <UploadImagesPanel
             selectedFiles={selectedFiles}
             onFilesChange={setSelectedFiles}

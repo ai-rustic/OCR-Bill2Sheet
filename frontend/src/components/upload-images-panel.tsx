@@ -1,10 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Dropzone, DropzoneEmptyState } from '@/components/ui/dropzone';
 import { Button } from '@/components/ui/button';
-import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner';
 import { Pill } from '@/components/ui/pill';
-import { Download, Loader2, X, ArrowUp, ArrowDown, Plus, Info } from 'lucide-react';
+import { Download, Loader2, X, ArrowUp, ArrowDown, Plus, Info, ChevronDown, ChevronUp, Camera, FileImage, MousePointer2, Download as DownloadIcon } from 'lucide-react';
 import Image from 'next/image';
 
 interface FileWithPreview {
@@ -28,6 +28,20 @@ export function UploadImagesPanel({
   isUploading, 
   showResults 
 }: UploadImagesPanelProps) {
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [hasFilesBeenSelected, setHasFilesBeenSelected] = useState(false);
+
+  // Auto-collapse instructions when files are first selected
+  useEffect(() => {
+    if (selectedFiles.length > 0 && !hasFilesBeenSelected) {
+      setShowInstructions(false);
+      setHasFilesBeenSelected(true);
+    } else if (selectedFiles.length === 0) {
+      setHasFilesBeenSelected(false);
+      setShowInstructions(true);
+    }
+  }, [selectedFiles.length, hasFilesBeenSelected]);
+
   const handleFileDrop = (files: File[]) => {
     const newFiles = files.map(file => {
       const reader = new FileReader();
@@ -77,29 +91,92 @@ export function UploadImagesPanel({
   };
 
   return (
-    <div className={`space-y-4 ${showResults ? 'lg:w-1/2 lg:flex-shrink-0 lg:overflow-hidden lg:px-2 lg:box-border' : 'w-full max-w-2xl mx-auto'}`}>
+    <div className={`space-y-4 ${showResults ? 'lg:w-1/2 lg:flex-shrink-0 lg:px-2 lg:box-border' : 'w-full max-w-2xl mx-auto'}`}>
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-gray-900">Bill OCR Processor</h2>
         <p className="text-gray-600">Upload multiple images of your bill (for long receipts) to extract data and export to Excel</p>
         
-        {/* Instructions for multiple image ordering */}
-        <Banner className="bg-blue-50 border border-blue-200 text-blue-900" inset>
-          <BannerIcon icon={Info} />
-          <BannerTitle className="text-left">
-            <div className="space-y-2">
-              <div className="text-sm font-semibold mb-2">
-                📋 Bill Image Ordering Guide
-              </div>
-              <div className="text-sm space-y-1">
-                <div><strong>• When uploading multiple images:</strong> Please arrange images in order from top to bottom of the bill</div>
-                <div><strong>• First image (#1):</strong> Bill header (store information, logo, receipt top)</div>
-                <div><strong>• Following images (#2, #3...):</strong> Product sections in the order they appear on the bill</div>
-                <div><strong>• Last image:</strong> Bill footer (subtotal, tax, total amount, payment info)</div>
-                <div><strong>• Use ↑↓ buttons:</strong> To reorder images if needed for accurate processing</div>
+        {/* Collapsible Step-by-Step Instructions */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowInstructions(!showInstructions)}
+              className="text-blue-700 hover:text-blue-900 hover:bg-blue-50 p-2 h-auto"
+            >
+              <Info size={16} className="mr-2" />
+              <span className="font-medium">How to use Bill OCR Processor</span>
+              {showInstructions ? <ChevronUp size={16} className="ml-2" /> : <ChevronDown size={16} className="ml-2" />}
+            </Button>
+          </div>
+          
+          <div 
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              showInstructions ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Step 1: Take Photos */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-1 text-blue-900 font-medium text-sm">
+                      <Camera size={14} />
+                      <span>Take Photos</span>
+                    </div>
+                    <div className="text-xs text-blue-700">
+                      Capture bill from top to bottom with clear lighting
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2: Upload Images */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-1 text-blue-900 font-medium text-sm">
+                      <FileImage size={14} />
+                      <span>Upload Images</span>
+                    </div>
+                    <div className="text-xs text-blue-700">
+                      Drag & drop up to 20 images (10MB each)
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3: Arrange Order */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-1 text-blue-900 font-medium text-sm">
+                      <MousePointer2 size={14} />
+                      <span>Order Images</span>
+                    </div>
+                    <div className="text-xs text-blue-700">
+                      Use ↑↓ buttons to arrange from bill top to bottom
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 4: Process */}
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-1 text-blue-900 font-medium text-sm">
+                      <DownloadIcon size={14} />
+                      <span>Process & Download</span>
+                    </div>
+                    <div className="text-xs text-blue-700">
+                      Click process button to extract data to Excel
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </BannerTitle>
-        </Banner>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -136,7 +213,8 @@ export function UploadImagesPanel({
 
         {/* Selected files preview */}
         {selectedFiles.length > 0 && (
-          <div className="border border-gray-200 rounded-lg p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+          <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+            {/* Fixed header */}
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-gray-900">
                 Bill Images ({selectedFiles.length} {selectedFiles.length === 1 ? 'image' : 'images'})
@@ -152,72 +230,74 @@ export function UploadImagesPanel({
               </Button>
             </div>
 
-            {/* Images grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {selectedFiles.map((fileWithPreview, index) => (
-                <div key={fileWithPreview.id} className="border border-gray-200 rounded-lg p-3 space-y-3">
-                  {/* File header with order info */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Pill variant="secondary" className="text-xs font-semibold">
-                        #{index + 1}
-                      </Pill>
-                      <div>
-                        <p className="font-medium text-sm text-gray-900 truncate max-w-32">
-                          {fileWithPreview.file.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {(fileWithPreview.file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
+            {/* Scrollable images grid */}
+            <div className="max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {selectedFiles.map((fileWithPreview, index) => (
+                  <div key={fileWithPreview.id} className="border border-gray-200 rounded-lg p-3 space-y-3">
+                    {/* File header with order info */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Pill variant="secondary" className="text-xs font-semibold">
+                          #{index + 1}
+                        </Pill>
+                        <div>
+                          <p className="font-medium text-sm text-gray-900 truncate max-w-32">
+                            {fileWithPreview.file.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {(fileWithPreview.file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleMoveUp(fileWithPreview.id)}
+                          disabled={isUploading || index === 0}
+                          className="h-6 w-6 p-0"
+                        >
+                          <ArrowUp size={12} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleMoveDown(fileWithPreview.id)}
+                          disabled={isUploading || index === selectedFiles.length - 1}
+                          className="h-6 w-6 p-0"
+                        >
+                          <ArrowDown size={12} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFile(fileWithPreview.id)}
+                          disabled={isUploading}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X size={12} />
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveUp(fileWithPreview.id)}
-                        disabled={isUploading || index === 0}
-                        className="h-6 w-6 p-0"
-                      >
-                        <ArrowUp size={12} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveDown(fileWithPreview.id)}
-                        disabled={isUploading || index === selectedFiles.length - 1}
-                        className="h-6 w-6 p-0"
-                      >
-                        <ArrowDown size={12} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveFile(fileWithPreview.id)}
-                        disabled={isUploading}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X size={12} />
-                      </Button>
+
+                    {/* Image preview */}
+                    <div className="border border-gray-200 rounded overflow-hidden">
+                      <Image
+                        src={fileWithPreview.preview}
+                        alt={`Bill page ${index + 1}`}
+                        width={300}
+                        height={200}
+                        className="w-full h-32 object-cover bg-gray-50"
+                      />
                     </div>
                   </div>
-
-                  {/* Image preview */}
-                  <div className="border border-gray-200 rounded overflow-hidden">
-                    <Image
-                      src={fileWithPreview.preview}
-                      alt={`Bill page ${index + 1}`}
-                      width={300}
-                      height={200}
-                      className="w-full h-32 object-cover bg-gray-50"
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            {/* Process button */}
+            {/* Fixed process button */}
             <div className="pt-4 border-t">
               <Button
                 onClick={onProcessOCR}
