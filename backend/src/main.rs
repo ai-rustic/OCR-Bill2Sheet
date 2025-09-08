@@ -7,7 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}};
 use std::fs;
 use base64::{Engine as _, engine::general_purpose};
 use mime_guess::from_path;
@@ -209,6 +209,7 @@ async fn call_gemini_ocr(images_data: Vec<(String, Vec<u8>)>, api_key: &str) -> 
     Err("Failed to parse Gemini response".into())
 }
 
+
 #[tokio::main]
 async fn main() {
     let config = load_config();
@@ -217,6 +218,10 @@ async fn main() {
     
     let app = Router::new()
         .route("/api/ocr-bill", post(upload_bill_images))
+        .fallback_service(
+            ServeDir::new("../frontend/out")
+                .not_found_service(ServeFile::new("../frontend/out/index.html"))
+        )
         .with_state(config.clone())
         .layer(DefaultBodyLimit::max(200 * 1024 * 1024)) // 200MB for up to 20 images of 10MB each
         .layer(CorsLayer::permissive());
