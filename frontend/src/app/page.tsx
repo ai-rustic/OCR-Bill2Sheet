@@ -65,7 +65,7 @@ export default function Home() {
         formData.append('bill_images', file);
       });
 
-      const response = await fetch('http://10.1.4.189:8888/api/ocr-bill', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/ocr-bill`, {
         method: 'POST',
         body: formData,
       });
