@@ -1,6 +1,7 @@
 'use client';
 
-import { Loader2, Download, FileText, Calendar, DollarSign, Building, User, Hash, MapPin, CreditCard, FileSpreadsheet, Copy } from 'lucide-react';
+import { Loader2, Download, FileText, Calendar, DollarSign, Building, User, Hash, MapPin, CreditCard, FileSpreadsheet, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Pill } from '@/components/ui/pill';
 import {
@@ -55,21 +56,105 @@ interface OCRResultsPanelProps {
 }
 
 export function OCRResultsPanel({ showResults, isUploading, ocrResults }: OCRResultsPanelProps) {
+  const [copyNotification, setCopyNotification] = useState<string | null>(null);
+
   if (!showResults) {
     return null;
   }
 
-  const handleDownloadExcel = () => {
-    // Future implementation for Excel download
-    console.log('Download Excel functionality to be implemented');
+  const handleDownloadExcel = (billData: BillData) => {
+    // Create CSV content that Excel can read
+    const headers = ['No.', 'Product Name', 'Quantity', 'Unit', 'Unit Price', 'Subtotal'];
+    const csvHeaders = headers.join(',');
+    
+    const csvRows = billData.line_items.map(item => [
+      item.no.toString(),
+      `"${item.product_name.replace(/"/g, '""')}"`, // Escape quotes in product name
+      item.quantity,
+      item.unit,
+      item.unit_price,
+      item.subtotal
+    ].join(','));
+    
+    const csvContent = [csvHeaders, ...csvRows].join('\n');
+    
+    // Add BOM for proper UTF-8 encoding in Excel
+    const BOM = '\uFEFF';
+    const csvWithBOM = BOM + csvContent;
+    
+    // Create and download file
+    const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // Generate filename with bill number and date
+    const billNumber = billData.bill_meta.bill_number || 'bill';
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${billNumber}_line_items_${date}.csv`;
+    
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    // Show success notification
+    setCopyNotification('Excel file downloaded successfully!');
+    setTimeout(() => {
+      setCopyNotification(null);
+    }, 3000);
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
 
+  const copyLineItemsTable = async (lineItems: LineItem[]) => {
+    // Create header row
+    const headers = ['No.', 'Product Name', 'Quantity', 'Unit', 'Unit Price', 'Subtotal'];
+    const headerRow = headers.join('\t');
+    
+    // Create data rows
+    const dataRows = lineItems.map(item => [
+      item.no.toString(),
+      item.product_name,
+      item.quantity,
+      item.unit,
+      item.unit_price,
+      item.subtotal
+    ].join('\t'));
+    
+    // Combine header and data rows
+    const tableData = [headerRow, ...dataRows].join('\n');
+    
+    try {
+      await navigator.clipboard.writeText(tableData);
+      setCopyNotification('Table copied successfully!');
+      
+      // Clear notification after 3 seconds
+      setTimeout(() => {
+        setCopyNotification(null);
+      }, 3000);
+    } catch {
+      setCopyNotification('Failed to copy table');
+      setTimeout(() => {
+        setCopyNotification(null);
+      }, 3000);
+    }
+  };
+
   return (
     <div className="space-y-4 animate-slide-in-right lg:w-1/2 lg:flex-shrink-0 lg:overflow-hidden lg:px-2 lg:box-border">
+      {/* Copy Notification */}
+      {copyNotification && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2 animate-slide-in-right">
+          <Check size={16} />
+          <span className="text-sm font-medium">{copyNotification}</span>
+        </div>
+      )}
+      
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-gray-900">OCR Results</h2>
         <p className="text-gray-600">Extracted data from your bill images</p>
@@ -94,19 +179,9 @@ export function OCRResultsPanel({ showResults, isUploading, ocrResults }: OCRRes
             {ocrResults.success && ocrResults.bill_data ? (
               <div className="space-y-6">
                 {/* Status Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-green-700">Processing completed successfully</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={handleDownloadExcel}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Download size={16} className="mr-2" />
-                    Download Excel
-                  </Button>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-green-700">Processing completed successfully</span>
                 </div>
 
                 {/* Bill Metadata Section */}
@@ -221,9 +296,30 @@ export function OCRResultsPanel({ showResults, isUploading, ocrResults }: OCRRes
                 {/* Line Items Section with Simple Overflow */}
                 {ocrResults.bill_data.line_items && ocrResults.bill_data.line_items.length > 0 && (
                   <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-4 border border-orange-200">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <FileSpreadsheet size={18} className="text-orange-600" />
-                      <h3 className="font-semibold text-gray-900">Line Items ({ocrResults.bill_data.line_items.length})</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <FileSpreadsheet size={18} className="text-orange-600" />
+                        <h3 className="font-semibold text-gray-900">Line Items ({ocrResults.bill_data.line_items.length})</h3>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyLineItemsTable(ocrResults.bill_data!.line_items)}
+                          className="bg-white hover:bg-orange-50 border-orange-300 text-orange-700 hover:border-orange-400"
+                        >
+                          <Copy size={16} className="mr-2" />
+                          Copy Table
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleDownloadExcel(ocrResults.bill_data!)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Download size={16} className="mr-2" />
+                          Download Excel
+                        </Button>
+                      </div>
                     </div>
                     
                     <div className="overflow-x-auto">
