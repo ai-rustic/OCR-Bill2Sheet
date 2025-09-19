@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: Database Configuration API
+  description: API contracts for database connection and configuration
+  version: 1.0.0
+
+paths:
+  /config/database:
+    get:
+      summary: Get database configuration status
+      description: Returns non-sensitive database configuration information
+      responses:
+        '200':
+          description: Database configuration information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseConfigResponse'
+              example:
+                connected: true
+                database_name: "bill_ocr"
+                max_connections: 10
+                pool_configuration:
+                  connection_timeout_seconds: 30
+                  idle_timeout_seconds: 600
+                  max_lifetime_seconds: 1800
+
+components:
+  schemas:
+    DatabaseConfigResponse:
+      type: object
+      required:
+        - connected
+        - database_name
+        - max_connections
+        - pool_configuration
+      properties:
+        connected:
+          type: boolean
+          description: Whether database connection is established
+        database_name:
+          type: string
+          description: Name of the connected database
+        max_connections:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Maximum number of connections in pool
+        pool_configuration:
+          $ref: '#/components/schemas/PoolConfiguration'
+
+    PoolConfiguration:
+      type: object
+      required:
+        - connection_timeout_seconds
+        - idle_timeout_seconds
+        - max_lifetime_seconds
+      properties:
+        connection_timeout_seconds:
+          type: integer
+          minimum: 1
+          description: Timeout for acquiring new connections
+        idle_timeout_seconds:
+          type: integer
+          minimum: 1
+          description: How long connections can remain idle
+        max_lifetime_seconds:
+          type: integer
+          minimum: 1
+          description: Maximum lifetime of any connection
+
+    DatabaseError:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          enum:
+            - configuration_error
+            - connection_error
+            - pool_error
+            - health_check_error
+          description: Type of database error
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: string
+          description: Additional error details (optional)

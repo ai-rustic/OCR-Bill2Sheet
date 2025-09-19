@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: Database Health Check API
+  description: API for checking database connectivity and health status
+  version: 1.0.0
+
+paths:
+  /health:
+    get:
+      summary: Check database health
+      description: Returns the current health status of the database connection
+      responses:
+        '200':
+          description: Database is healthy and accessible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                database_accessible: true
+                pool_size: 3
+                timestamp: "2025-09-19T12:00:00Z"
+        '503':
+          description: Database is unhealthy or inaccessible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "unhealthy"
+                database_accessible: false
+                pool_size: 0
+                timestamp: "2025-09-19T12:00:00Z"
+
+  /health/detail:
+    get:
+      summary: Get detailed database health information
+      description: Returns detailed information about database connectivity and pool status
+      responses:
+        '200':
+          description: Detailed health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - database_accessible
+        - pool_size
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          description: Overall health status
+        database_accessible:
+          type: boolean
+          description: Whether database queries can be executed
+        pool_size:
+          type: integer
+          minimum: 0
+          description: Current number of connections in pool
+        timestamp:
+          type: string
+          format: date-time
+          description: When the health check was performed
+
+    DetailedHealthResponse:
+      allOf:
+        - $ref: '#/components/schemas/HealthResponse'
+        - type: object
+          properties:
+            max_connections:
+              type: integer
+              minimum: 1
+              description: Maximum allowed connections in pool
+            idle_connections:
+              type: integer
+              minimum: 0
+              description: Number of idle connections
+            configuration:
+              type: object
+              properties:
+                connection_timeout_seconds:
+                  type: integer
+                  minimum: 1
+                idle_timeout_seconds:
+                  type: integer
+                  minimum: 1
+                max_lifetime_seconds:
+                  type: integer
+                  minimum: 1
