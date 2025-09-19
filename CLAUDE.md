@@ -43,11 +43,67 @@ Rust 1.75+ (edition = "2024"): Follow standard conventions
 - Speed and prototype delivery prioritized
 - No test scaffolding during development
 
-## Current Feature: Bill Table Schema
+## Current Feature: Bill Table Schema ✅ COMPLETED
 - Bill table with 14 fields for Vietnamese invoice data
 - SQLx migrations for schema management
 - NUMERIC(18,2) precision for financial calculations
 - TEXT fields for Vietnamese text support
 - Compile-time query validation with SQLx macros
+
+## Migration Patterns and Usage Examples
+
+### Migration Commands
+```bash
+# Create new migration
+cd backend && sqlx migrate add create_bill_table
+
+# Run migrations
+cd backend && sqlx migrate run
+
+# Rollback migration
+cd backend && sqlx migrate revert
+
+# Check migration status
+cd backend && sqlx migrate info
+```
+
+### Bill Service Usage Examples
+```rust
+use backend::config::ConnectionPool;
+use backend::services::bill_service::BillService;
+use backend::models::{Bill, CreateBill};
+
+// Initialize service
+let pool = ConnectionPool::from_env().await?;
+let bill_service = BillService::new(pool.pool().clone());
+
+// Get all bills
+let bills = bill_service.get_all_bills().await?;
+
+// Create new bill
+let new_bill = CreateBill {
+    form_no: Some("Mẫu 01-GTKT".to_string()),
+    invoice_no: Some("INV-2024-001".to_string()),
+    // ... other fields
+};
+let created = bill_service.create_bill(new_bill).await?;
+
+// Search bills
+let results = bill_service.search_bills_by_invoice("2024").await?;
+```
+
+### Validated Field Mappings
+- PostgreSQL SERIAL → Rust i32
+- PostgreSQL TEXT → Rust Option<String>
+- PostgreSQL DATE → Rust Option<chrono::NaiveDate>
+- PostgreSQL NUMERIC(18,2) → Rust Option<rust_decimal::Decimal>
+- PostgreSQL NUMERIC(5,2) → Rust Option<rust_decimal::Decimal>
+
+### Migration Safety Procedures
+1. Always test rollback before deploying: `sqlx migrate revert`
+2. Verify table structure: `psql $DATABASE_URL -c "\d bills"`
+3. Test data integrity with edge cases
+4. Use compile-time validation with SQLx macros
+5. Validate Vietnamese text and financial precision
 
 <!-- MANUAL ADDITIONS END -->

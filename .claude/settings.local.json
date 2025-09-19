@@ -5,7 +5,8 @@
       "Bash(cargo clippy:*)",
       "Bash(cargo test)",
       "Bash(cargo:*)",
-      "Bash(timeout 5s cargo run)"
+      "Bash(timeout 5s cargo run)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []

@@ -59,29 +59,29 @@
 
 ## Phase 3.4: Migration Execution and Validation
 - [x] T013 Run migration: `sqlx migrate run` in backend/
-- [ ] T014 Verify table creation: `psql $DATABASE_URL -c "\d bills"`
-- [ ] T015 Test data insertion with Vietnamese text and numeric precision
-- [ ] T016 Verify all 14 fields accept correct data types
+- [x] T014 Verify table creation: `psql $DATABASE_URL -c "\d bills"`
+- [x] T015 Test data insertion with Vietnamese text and numeric precision
+- [x] T016 Verify all 14 fields accept correct data types
 
 ## Phase 3.5: Rust Integration
-- [ ] T017 Create Bill struct in backend/src/models/bill.rs with sqlx::FromRow derive
-- [ ] T018 Map PostgreSQL types to Rust types (SERIAL→i32, TEXT→Option<String>, etc.)
-- [ ] T019 Add compile-time query validation with sqlx::query! macro examples
-- [ ] T020 Test Rust struct mapping with sample queries
+- [x] T017 Create Bill struct in backend/src/models/bill.rs with sqlx::FromRow derive
+- [x] T018 Map PostgreSQL types to Rust types (SERIAL→i32, TEXT→Option<String>, etc.)
+- [x] T019 Add compile-time query validation with sqlx::query! macro examples
+- [x] T020 Test Rust struct mapping with sample queries
 
 ## Phase 3.6: Migration Safety and Rollback
-- [ ] T021 Test migration rollback: `sqlx migrate revert` in backend/
-- [ ] T022 Verify table removal after rollback
-- [ ] T023 Re-apply migration to restore table
-- [ ] T024 Document migration safety procedures
+- [x] T021 Test migration rollback: `sqlx migrate revert` in backend/
+- [x] T022 Verify table removal after rollback
+- [x] T023 Re-apply migration to restore table
+- [x] T024 Document migration safety procedures
 
 ## Phase 3.7: Validation and Polish
-- [ ] T025 [P] Validate financial precision with NUMERIC types
-- [ ] T026 [P] Test Vietnamese text support with UTF-8 characters
-- [ ] T027 [P] Verify date handling with issued_date field
-- [ ] T028 Run cargo check to verify SQLx compile-time validation
-- [ ] T029 Update CLAUDE.md with migration patterns and usage examples
-- [ ] T030 Document quickstart validation results
+- [x] T025 [P] Validate financial precision with NUMERIC types
+- [x] T026 [P] Test Vietnamese text support with UTF-8 characters
+- [x] T027 [P] Verify date handling with issued_date field
+- [x] T028 Run cargo check to verify SQLx compile-time validation
+- [x] T029 Update CLAUDE.md with migration patterns and usage examples
+- [x] T030 Document quickstart validation results
 
 ## Dependencies
 - T001-T003 (Setup) before T004-T006 (Migration creation)
