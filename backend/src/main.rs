@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod models;
 mod services;
 mod utils;
 
