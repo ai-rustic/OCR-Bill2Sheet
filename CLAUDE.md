@@ -1,4 +1,4 @@
-﻿# OCR_Bill2Sheet Development Guidelines
+﻿/ru# OCR_Bill2Sheet Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2025-09-19
 
@@ -19,6 +19,7 @@ cargo test && cargo clippy
 Rust 1.75+ (edition = "2024"): Follow standard conventions
 
 ## Recent Changes
+- 002-create-a-bill: Bill table schema with 14 fields for Vietnamese invoices, SQLx migrations
 - HEAD: Added Rust 1.75+ (edition = "2024") + Axum 0.8.4, SQLx 0.8.6 (postgres, runtime-tokio, macros), Tokio 1.47.1, dotenvy 0.15.7
 
 <!-- MANUAL ADDITIONS START -->
@@ -42,10 +43,11 @@ Rust 1.75+ (edition = "2024"): Follow standard conventions
 - Speed and prototype delivery prioritized
 - No test scaffolding during development
 
-## Current Feature: Database Connection
-- Connect backend to PostgreSQL bill_ocr database
-- No table creation or model modifications required
-- Use existing database schema
-- Environment-driven configuration
+## Current Feature: Bill Table Schema
+- Bill table with 14 fields for Vietnamese invoice data
+- SQLx migrations for schema management
+- NUMERIC(18,2) precision for financial calculations
+- TEXT fields for Vietnamese text support
+- Compile-time query validation with SQLx macros
 
 <!-- MANUAL ADDITIONS END -->
