@@ -1,103 +1,61 @@
-# Feature Specification: PostgreSQL Database Connection for Axum Backend
+# Feature Specification: Backend Database Connection
 
-**Feature Branch**: `001-connect-postgresql-database`
-**Created**: 2025-09-19
-**Status**: Draft
-**Input**: User description: "Connect PostgreSQL database with axum backend. The database name is: bill_ocr. All database connection information must be stored in a .env file. Use SQLx to handle the connection between the Axum backend and PostgreSQL. No table need to add in this phase"
+## Overview
+Connect the backend application to the bill_ocr PostgreSQL database to enable data persistence and retrieval for the OCR Bill2Sheet application.
 
-## Execution Flow (main)
-```
-1. Parse user description from Input
-   ’ Feature description provided: Connect PostgreSQL to Axum backend
-2. Extract key concepts from description
-   ’ Actors: Backend system, Database
-   ’ Actions: Connect, Configure
-   ’ Data: Database connection parameters
-   ’ Constraints: Use .env file, SQLx library, no tables in this phase
-3. For each unclear aspect:
-   ’ [NEEDS CLARIFICATION: PostgreSQL server host/port not specified]
-   ’ [NEEDS CLARIFICATION: Database user credentials not specified]
-   ’ [NEEDS CLARIFICATION: Connection pool size preferences not specified]
-4. Fill User Scenarios & Testing section
-   ’ Backend needs to establish and verify database connectivity
-5. Generate Functional Requirements
-   ’ Each requirement focused on connection establishment and configuration
-6. Identify Key Entities (if data involved)
-   ’ Database connection configuration
-7. Run Review Checklist
-   ’ WARN "Spec has uncertainties regarding connection parameters"
-8. Return: SUCCESS (spec ready for planning)
-```
-
----
-
-## ¡ Quick Guidelines
--  Focus on WHAT users need and WHY
-- L Avoid HOW to implement (no tech stack, APIs, code structure)
-- =e Written for business stakeholders, not developers
-
----
-
-## User Scenarios & Testing *(mandatory)*
-
-### Primary User Story
-As a backend system administrator, I need the Axum web server to successfully connect to a PostgreSQL database named "bill_ocr" so that the application can store and retrieve data for OCR bill processing functionality.
-
-### Acceptance Scenarios
-1. **Given** the backend system is starting up, **When** the application initializes, **Then** it successfully establishes a connection to the PostgreSQL database
-2. **Given** database connection parameters are provided via environment variables, **When** the system reads the configuration, **Then** it uses those parameters to connect to the database
-3. **Given** the database connection is established, **When** the system performs a health check, **Then** it confirms the connection is active and responsive
-
-### Edge Cases
-- What happens when database connection parameters are missing or invalid?
-- How does the system handle database server unavailability during startup?
-- What occurs when the specified database "bill_ocr" doesn't exist on the PostgreSQL server?
-
-## Requirements *(mandatory)*
+## Requirements
 
 ### Functional Requirements
-- **FR-001**: System MUST establish a connection to a PostgreSQL database named "bill_ocr"
-- **FR-002**: System MUST read database connection configuration from environment variables stored in a .env file
-- **FR-003**: System MUST validate database connectivity during application startup
-- **FR-004**: System MUST handle connection failures gracefully with appropriate error messages
-- **FR-005**: System MUST support secure database authentication using username and password
-- **FR-006**: System MUST connect to PostgreSQL server at [NEEDS CLARIFICATION: host and port not specified - localhost:5432 assumed?]
-- **FR-007**: System MUST authenticate with database using [NEEDS CLARIFICATION: username and password not specified]
-- **FR-008**: System MUST configure connection pool with [NEEDS CLARIFICATION: pool size and timeout settings not specified]
+- **FR1**: Backend must establish connection to PostgreSQL database named "bill_ocr"
+- **FR2**: Connection must use SQLx with compile-time query validation
+- **FR3**: Connection pooling must be implemented for performance
+- **FR4**: Database configuration must be environment-driven
+- **FR5**: Support async database operations using Axum framework
 
-### Key Entities *(include if feature involves data)*
-- **Database Connection Configuration**: Contains host, port, database name, username, password, and connection pool settings required to establish PostgreSQL connectivity
-- **Environment Variables**: Secure storage mechanism for database credentials and connection parameters loaded from .env file
+### Non-Functional Requirements
+- **NFR1**: Connection must be established at application startup
+- **NFR2**: Failed database connections must prevent application startup
+- **NFR3**: Connection pool must handle concurrent requests efficiently
+- **NFR4**: Database credentials must be securely managed via environment variables
 
----
+### Constraints
+- Use existing database schema (no table creation or model modifications)
+- Follow Axum + SQLx architecture as per constitution
+- Use environment configuration for database URL
+- No ORM usage - direct SQLx queries only
 
-## Review & Acceptance Checklist
-*GATE: Automated checks run during main() execution*
+## User Stories
 
-### Content Quality
-- [x] No implementation details (languages, frameworks, APIs)
-- [x] Focused on user value and business needs
-- [x] Written for non-technical stakeholders
-- [x] All mandatory sections completed
+### US1: Database Connection Initialization
+**As a** backend developer
+**I want** the application to connect to the bill_ocr database on startup
+**So that** all database operations are available for the application lifecycle
 
-### Requirement Completeness
-- [ ] No [NEEDS CLARIFICATION] markers remain
-- [x] Requirements are testable and unambiguous
-- [x] Success criteria are measurable
-- [x] Scope is clearly bounded
-- [x] Dependencies and assumptions identified
+**Acceptance Criteria:**
+- Application connects to PostgreSQL database "bill_ocr" on startup
+- Connection failure causes graceful application shutdown with error message
+- Connection pool is configured with appropriate limits
 
----
+### US2: Environment Configuration
+**As a** deployment engineer
+**I want** database connection details to be configurable via environment variables
+**So that** different environments (dev, staging, prod) can use different database instances
 
-## Execution Status
-*Updated by main() during processing*
+**Acceptance Criteria:**
+- DATABASE_URL environment variable configures connection
+- Default fallback for development environment
+- Secure handling of database credentials
 
-- [x] User description parsed
-- [x] Key concepts extracted
-- [x] Ambiguities marked
-- [x] User scenarios defined
-- [x] Requirements generated
-- [x] Entities identified
-- [ ] Review checklist passed (pending clarifications)
+## Technical Context
+- Backend framework: Axum (Rust)
+- Database: PostgreSQL (existing bill_ocr database)
+- ORM/Query layer: SQLx with compile-time validation
+- Configuration: Environment-based
+- Connection management: Connection pooling required
 
----
+## Success Criteria
+1. Backend successfully connects to bill_ocr database
+2. Connection pool is properly configured
+3. Environment variables control database configuration
+4. Application startup fails gracefully if database is unavailable
+5. Ready for future database query implementation
