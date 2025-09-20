@@ -85,11 +85,11 @@ async fn main() {
         // Health endpoints
         .route("/health", get(get_health))
         .route("/health/detail", get(get_health_detail))
-        // Bill endpoints
-        .route("/bills", get(get_all_bills).post(create_bill))
-        .route("/bills/search", get(search_bills))
-        .route("/bills/count", get(get_bills_count))
-        .route("/bills/{id}", get(get_bill_by_id).put(update_bill).delete(delete_bill))
+        // Bill endpoints with /api/ prefix
+        .route("/api/bills", get(get_all_bills).post(create_bill))
+        .route("/api/bills/search", get(search_bills))
+        .route("/api/bills/count", get(get_bills_count))
+        .route("/api/bills/{id}", get(get_bill_by_id).put(update_bill).delete(delete_bill))
         // OCR endpoints
         .route("/api/ocr", post(upload_images))
         .fallback(not_found_handler)

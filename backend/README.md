@@ -18,13 +18,13 @@ Rust backend service for OCR bill processing with image upload capabilities.
 
 ### Bill Management Endpoints
 
-- `GET /bills` - Get all bills
-- `POST /bills` - Create a new bill
-- `GET /bills/search` - Search bills with query parameters
-- `GET /bills/count` - Get total bill count
-- `GET /bills/{id}` - Get bill by ID
-- `PUT /bills/{id}` - Update bill by ID
-- `DELETE /bills/{id}` - Delete bill by ID
+- `GET /api/bills` - Get all bills
+- `POST /api/bills` - Create a new bill
+- `GET /api/bills/search` - Search bills with query parameters
+- `GET /api/bills/count` - Get total bill count
+- `GET /api/bills/{id}` - Get bill by ID
+- `PUT /api/bills/{id}` - Update bill by ID
+- `DELETE /api/bills/{id}` - Delete bill by ID
 
 ### OCR Image Upload Endpoint
 

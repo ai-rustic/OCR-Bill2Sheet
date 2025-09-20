@@ -19,7 +19,7 @@ use crate::{
     services::bill_service::BillService,
 };
 
-/// GET /bills endpoint handler
+/// GET /api/bills endpoint handler
 ///
 /// Returns all bills from the database in a paginated format.
 /// Uses the BillService to fetch all bills and wraps the response
@@ -52,7 +52,7 @@ pub async fn get_all_bills(
     }
 }
 
-/// GET /bills/{id} endpoint handler
+/// GET /api/bills/{id} endpoint handler
 ///
 /// Returns a specific bill by its ID.
 /// Uses the BillService to fetch the bill and handles the case
@@ -94,7 +94,7 @@ pub async fn get_bill_by_id(
     }
 }
 
-/// POST /bills endpoint handler
+/// POST /api/bills endpoint handler
 ///
 /// Creates a new bill with the provided data.
 /// Uses the BillService to create the bill and returns
@@ -132,7 +132,7 @@ pub async fn create_bill(
     }
 }
 
-/// PUT /bills/{id} endpoint handler
+/// PUT /api/bills/{id} endpoint handler
 ///
 /// Updates an existing bill with the provided data.
 /// Uses the BillService to update the bill and handles
@@ -177,7 +177,7 @@ pub async fn update_bill(
     }
 }
 
-/// DELETE /bills/{id} endpoint handler
+/// DELETE /api/bills/{id} endpoint handler
 ///
 /// Deletes a bill by its ID.
 /// Uses the BillService to delete the bill and returns
@@ -231,7 +231,7 @@ pub struct SearchParams {
     pub invoice: Option<String>,
 }
 
-/// GET /bills/search endpoint handler
+/// GET /api/bills/search endpoint handler
 ///
 /// Searches bills by invoice number using a pattern match.
 /// Supports query parameters 'q' or 'invoice' for the search term.
@@ -280,7 +280,7 @@ pub async fn search_bills(
     }
 }
 
-/// GET /bills/count endpoint handler
+/// GET /api/bills/count endpoint handler
 ///
 /// Returns the total count of bills in the database.
 /// Uses the BillService to get the aggregate count and
