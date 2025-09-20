@@ -1,27 +1,47 @@
 mod api;
 mod config;
+mod errors;
 mod models;
 mod services;
 mod utils;
 
 use axum::{
+    extract::FromRef,
     middleware,
-    routing::{get},
+    routing::{get, post, put, delete},
     Router,
 };
+use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{info, error, warn};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
-use config::{ConnectionPool, DatabaseConfig};
+use config::{ConnectionPool, DatabaseConfig, UploadConfig};
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: ConnectionPool,
+    pub upload_config: Arc<UploadConfig>,
+}
+
+impl FromRef<AppState> for ConnectionPool {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.pool.clone()
+    }
+}
+
+impl FromRef<AppState> for Arc<UploadConfig> {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.upload_config.clone()
+    }
+}
 use api::{
     get_health, get_health_detail, error_handling_middleware, timeout_middleware, not_found_handler,
-    get_all_bills, get_bill_by_id, create_bill, update_bill, delete_bill, search_bills, get_bills_count
+    get_all_bills, get_bill_by_id, create_bill, update_bill, delete_bill, search_bills, get_bills_count,
+    upload_images
 };
 
-/// Type alias for the application state shared across all Axum handlers
-/// This makes it clear what state is available to handlers and improves maintainability
-// type AppState = ConnectionPool;
 
 #[tokio::main]
 async fn main() {
@@ -41,8 +61,26 @@ async fn main() {
 
     info!("Database connection and validation completed successfully");
 
-    // Create the Axum router with health endpoints, bill endpoints, middleware layers, and connection pool state
-    // The AppState (ConnectionPool) is shared across all handlers via Axum's State system
+    // Initialize upload configuration
+    let upload_config = match UploadConfig::from_env() {
+        Ok(config) => {
+            info!("Upload configuration loaded: max_file_size_bytes={}, max_image_count={}",
+                  config.max_file_size_bytes, config.max_image_count);
+            Arc::new(config)
+        }
+        Err(e) => {
+            error!("Failed to load upload configuration: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Create unified application state
+    let app_state = AppState {
+        pool: pool.clone(),
+        upload_config: upload_config.clone(),
+    };
+
+    // Create router with unified state
     let app = Router::new()
         // Health endpoints
         .route("/health", get(get_health))
@@ -52,11 +90,14 @@ async fn main() {
         .route("/bills/search", get(search_bills))
         .route("/bills/count", get(get_bills_count))
         .route("/bills/{id}", get(get_bill_by_id).put(update_bill).delete(delete_bill))
+        // OCR endpoints
+        .route("/api/ocr", post(upload_images))
         .fallback(not_found_handler)
+        .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)) // 50MB total request limit
         .layer(middleware::from_fn(request_logging_middleware))
         .layer(middleware::from_fn(error_handling_middleware))
         .layer(middleware::from_fn(timeout_middleware))
-        .with_state(pool.clone()); // Clone is cheap for Arc-wrapped connection pool
+        .with_state(app_state);
 
     // Set up the server address
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

@@ -15,6 +15,7 @@ use tracing::{error, warn};
 // Public API modules
 pub mod bills;
 pub mod health;
+pub mod ocr;
 pub mod response;
 
 // Re-export endpoint handlers for router setup
@@ -23,6 +24,7 @@ pub use bills::{
     get_all_bills, get_bill_by_id, create_bill, update_bill,
     delete_bill, search_bills, get_bills_count
 };
+pub use ocr::upload_images;
 
 // Re-export response utilities
 pub use response::{ApiResponse, EmptyResponse, StringResponse, JsonResponse};

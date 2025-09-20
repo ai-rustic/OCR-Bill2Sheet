@@ -1,7 +1,9 @@
 pub mod database;
+pub mod upload_config;
 
 use sqlx::PgPool;
 pub use database::{DatabaseConfig, DatabaseError};
+pub use upload_config::UploadConfig;
 use crate::utils::database::{test_database_connectivity_detailed, PoolInfo};
 
 /// Wrapper around SQLx PgPool for database connection management.
