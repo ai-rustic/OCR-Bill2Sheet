@@ -1,0 +1,418 @@
+openapi: 3.0.3
+info:
+  title: Bill Service API
+  description: RESTful API for Vietnamese invoice/bill management
+  version: 1.0.0
+  contact:
+    name: OCR_Bill2Sheet
+servers:
+  - url: http://localhost:3000
+    description: Development server
+
+paths:
+  /bills:
+    get:
+      summary: Retrieve all bills
+      description: Get a list of all bills in the system
+      operationId: getAllBills
+      responses:
+        '200':
+          description: Successfully retrieved bills
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillListResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new bill
+      description: Create a new bill with provided data
+      operationId: createBill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBillRequest'
+      responses:
+        '201':
+          description: Bill created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /bills/{id}:
+    get:
+      summary: Retrieve a specific bill
+      description: Get a bill by its unique ID
+      operationId: getBillById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Bill ID
+      responses:
+        '200':
+          description: Successfully retrieved bill
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillResponse'
+        '404':
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a bill
+      description: Update an existing bill by ID
+      operationId: updateBill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Bill ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBillRequest'
+      responses:
+        '200':
+          description: Bill updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a bill
+      description: Delete a bill by its ID
+      operationId: deleteBill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Bill ID
+      responses:
+        '200':
+          description: Bill deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '404':
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /bills/search:
+    get:
+      summary: Search bills by invoice number
+      description: Search for bills by invoice number pattern (partial match)
+      operationId: searchBills
+      parameters:
+        - name: invoice
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Invoice number pattern to search for
+      responses:
+        '200':
+          description: Successfully retrieved matching bills
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillListResponse'
+        '400':
+          description: Missing or invalid search parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /bills/count:
+    get:
+      summary: Get total count of bills
+      description: Retrieve the total number of bills in the system
+      operationId: getBillsCount
+      responses:
+        '200':
+          description: Successfully retrieved bill count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Bill:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique bill identifier
+        form_no:
+          type: string
+          nullable: true
+          description: Form number (Mẫu số)
+        serial_no:
+          type: string
+          nullable: true
+          description: Serial number (Ký hiệu)
+        invoice_no:
+          type: string
+          nullable: true
+          description: Invoice number (Số hóa đơn)
+        issued_date:
+          type: string
+          format: date
+          nullable: true
+          description: Issue date (Ngày phát hành)
+        seller_name:
+          type: string
+          nullable: true
+          description: Seller name (Tên người bán)
+        seller_tax_code:
+          type: string
+          nullable: true
+          description: Seller tax code (Mã số thuế người bán)
+        item_name:
+          type: string
+          nullable: true
+          description: Item name (Tên hàng hóa/dịch vụ)
+        unit:
+          type: string
+          nullable: true
+          description: Unit (Đơn vị tính)
+        quantity:
+          type: number
+          format: decimal
+          nullable: true
+          description: Quantity (Số lượng)
+        unit_price:
+          type: number
+          format: decimal
+          nullable: true
+          description: Unit price (Đơn giá)
+        total_amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: Total amount (Thành tiền)
+        vat_rate:
+          type: number
+          format: decimal
+          nullable: true
+          description: VAT rate percentage (Thuế suất VAT %)
+        vat_amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: VAT amount (Tiền thuế VAT)
+
+    CreateBillRequest:
+      type: object
+      properties:
+        form_no:
+          type: string
+          nullable: true
+          description: Form number (Mẫu số)
+        serial_no:
+          type: string
+          nullable: true
+          description: Serial number (Ký hiệu)
+        invoice_no:
+          type: string
+          nullable: true
+          description: Invoice number (Số hóa đơn)
+        issued_date:
+          type: string
+          format: date
+          nullable: true
+          description: Issue date (Ngày phát hành)
+        seller_name:
+          type: string
+          nullable: true
+          description: Seller name (Tên người bán)
+        seller_tax_code:
+          type: string
+          nullable: true
+          description: Seller tax code (Mã số thuế người bán)
+        item_name:
+          type: string
+          nullable: true
+          description: Item name (Tên hàng hóa/dịch vụ)
+        unit:
+          type: string
+          nullable: true
+          description: Unit (Đơn vị tính)
+        quantity:
+          type: number
+          format: decimal
+          nullable: true
+          description: Quantity (Số lượng)
+        unit_price:
+          type: number
+          format: decimal
+          nullable: true
+          description: Unit price (Đơn giá)
+        total_amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: Total amount (Thành tiền)
+        vat_rate:
+          type: number
+          format: decimal
+          nullable: true
+          description: VAT rate percentage (Thuế suất VAT %)
+        vat_amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: VAT amount (Tiền thuế VAT)
+
+    BillResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Bill'
+        error:
+          type: string
+          nullable: true
+          example: null
+
+    BillListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bill'
+        error:
+          type: string
+          nullable: true
+          example: null
+
+    CountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: integer
+          format: int64
+          description: Total number of bills
+        error:
+          type: string
+          nullable: true
+          example: null
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: boolean
+          description: True if deletion was successful
+        error:
+          type: string
+          nullable: true
+          example: null
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          nullable: true
+          example: null
+        error:
+          type: string
+          description: Error message
+          example: "Resource not found"

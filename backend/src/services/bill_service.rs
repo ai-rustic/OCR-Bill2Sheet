@@ -26,7 +26,7 @@ impl BillService {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(bills)
     }
@@ -47,7 +47,7 @@ impl BillService {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(bill)
     }
@@ -84,7 +84,7 @@ impl BillService {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(bill)
     }
@@ -121,7 +121,7 @@ impl BillService {
         )
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(bill)
     }
@@ -135,7 +135,7 @@ impl BillService {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(result.rows_affected() > 0)
     }
@@ -157,7 +157,7 @@ impl BillService {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(bills)
     }
@@ -169,7 +169,7 @@ impl BillService {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(count.count.unwrap_or(0))
     }

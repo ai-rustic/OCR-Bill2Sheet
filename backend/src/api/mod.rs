@@ -13,10 +13,19 @@ use serde_json::json;
 use tracing::{error, warn};
 
 // Public API modules
+pub mod bills;
 pub mod health;
+pub mod response;
 
 // Re-export endpoint handlers for router setup
 pub use health::{get_health, get_health_detail};
+pub use bills::{
+    get_all_bills, get_bill_by_id, create_bill, update_bill,
+    delete_bill, search_bills, get_bills_count
+};
+
+// Re-export response utilities
+pub use response::{ApiResponse, EmptyResponse, StringResponse, JsonResponse};
 
 // Middleware functions are defined in this module and will be used in main.rs
 

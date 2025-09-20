@@ -6,7 +6,7 @@ mod utils;
 
 use axum::{
     middleware,
-    routing::get,
+    routing::{get, post, put, delete},
     Router,
 };
 use tracing::{info, error, warn};
@@ -14,7 +14,10 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use config::{ConnectionPool, DatabaseConfig};
-use api::{get_health, get_health_detail, error_handling_middleware, timeout_middleware, not_found_handler};
+use api::{
+    get_health, get_health_detail, error_handling_middleware, timeout_middleware, not_found_handler,
+    get_all_bills, get_bill_by_id, create_bill, update_bill, delete_bill, search_bills, get_bills_count
+};
 
 /// Type alias for the application state shared across all Axum handlers
 /// This makes it clear what state is available to handlers and improves maintainability
@@ -38,11 +41,17 @@ async fn main() {
 
     info!("Database connection and validation completed successfully");
 
-    // Create the Axum router with health endpoints, middleware layers, and connection pool state
+    // Create the Axum router with health endpoints, bill endpoints, middleware layers, and connection pool state
     // The AppState (ConnectionPool) is shared across all handlers via Axum's State system
     let app = Router::new()
+        // Health endpoints
         .route("/health", get(get_health))
         .route("/health/detail", get(get_health_detail))
+        // Bill endpoints
+        .route("/bills", get(get_all_bills).post(create_bill))
+        .route("/bills/search", get(search_bills))
+        .route("/bills/count", get(get_bills_count))
+        .route("/bills/{id}", get(get_bill_by_id).put(update_bill).delete(delete_bill))
         .fallback(not_found_handler)
         .layer(middleware::from_fn(request_logging_middleware))
         .layer(middleware::from_fn(error_handling_middleware))

@@ -6,7 +6,8 @@
       "Bash(cargo test)",
       "Bash(cargo:*)",
       "Bash(timeout 5s cargo run)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

@@ -19,8 +19,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Test 1: Get bills count
     println!("\n1. Testing bills count query...");
     match bill_service.get_bills_count().await {
-        Ok(count) => println!("   Bills count: {}", count),
-        Err(e) => println!("   Error: {:?}", e),
+        Ok(count) => println!("   Bills count: {count}"),
+        Err(e) => println!("   Error: {e:?}"),
     }
 
     // Test 2: Get all bills
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
         },
-        Err(e) => println!("   Error: {:?}", e),
+        Err(e) => println!("   Error: {e:?}"),
     }
 
     // Test 3: Get specific bill by ID
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   Date: {:?}", bill.issued_date);
         },
         Ok(None) => println!("   Bill with ID 1 not found"),
-        Err(e) => println!("   Error: {:?}", e),
+        Err(e) => println!("   Error: {e:?}"),
     }
 
     // Test 4: Create a new bill with Rust types
@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   Invoice: {}", new_bill.invoice_no.as_ref().unwrap());
             println!("   Total: {:?}", new_bill.total_amount);
         },
-        Err(e) => println!("   Error creating bill: {:?}", e),
+        Err(e) => println!("   Error creating bill: {e:?}"),
     }
 
     // Test 5: Search bills by pattern
@@ -90,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
         },
-        Err(e) => println!("   Error: {:?}", e),
+        Err(e) => println!("   Error: {e:?}"),
     }
 
     println!("\nBill struct mapping test completed successfully!");
