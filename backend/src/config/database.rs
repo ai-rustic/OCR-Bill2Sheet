@@ -36,7 +36,7 @@ impl DatabaseConfig {
         dotenvy::dotenv().ok(); // Load .env file if present
 
         let database_url = std::env::var("DATABASE_URL")
-            .map_err(|_| DatabaseError::ConfigurationError(
+            .map_err(|_| DatabaseError::Configuration(
                 "DATABASE_URL environment variable is required".to_string()
             ))?;
 
@@ -75,7 +75,7 @@ impl DatabaseConfig {
 
         // Validate configuration and provide helpful error context
         config.validate().map_err(|e|
-            DatabaseError::ConfigurationError(format!(
+            DatabaseError::Configuration(format!(
                 "Environment configuration validation failed: {e}. Check your .env file or environment variables."
             ))
         )?;
@@ -111,28 +111,28 @@ impl DatabaseConfig {
     pub fn validate(&self) -> Result<(), DatabaseError> {
         // Validate database URL format
         if !self.database_url.starts_with("postgresql://") && !self.database_url.starts_with("postgres://") {
-            return Err(DatabaseError::ConfigurationError(
+            return Err(DatabaseError::Configuration(
                 "database_url must be a valid PostgreSQL URL format".to_string()
             ));
         }
 
         // Validate max_connections
         if self.max_connections == 0 || self.max_connections > 100 {
-            return Err(DatabaseError::ConfigurationError(
+            return Err(DatabaseError::Configuration(
                 "max_connections must be > 0 and <= 100".to_string()
             ));
         }
 
         // Validate timeout values are positive
         if self.connection_timeout.is_zero() {
-            return Err(DatabaseError::ConfigurationError(
+            return Err(DatabaseError::Configuration(
                 "connection_timeout must be positive".to_string()
             ));
         }
 
         if let Some(idle_timeout) = self.idle_timeout {
             if idle_timeout.is_zero() {
-                return Err(DatabaseError::ConfigurationError(
+                return Err(DatabaseError::Configuration(
                     "idle_timeout must be positive".to_string()
                 ));
             }
@@ -140,7 +140,7 @@ impl DatabaseConfig {
 
         if let Some(max_lifetime) = self.max_lifetime {
             if max_lifetime.is_zero() {
-                return Err(DatabaseError::ConfigurationError(
+                return Err(DatabaseError::Configuration(
                     "max_lifetime must be positive".to_string()
                 ));
             }
@@ -166,7 +166,7 @@ impl DatabaseConfig {
         pool_options
             .connect(&self.database_url)
             .await
-            .map_err(DatabaseError::ConnectionError)
+            .map_err(DatabaseError::Connection)
     }
 }
 
@@ -174,14 +174,14 @@ impl DatabaseConfig {
 #[derive(Debug, thiserror::Error)]
 pub enum DatabaseError {
     #[error("Configuration error: {0}")]
-    ConfigurationError(String),
+    Configuration(String),
 
     #[error("Connection error: {0}")]
-    ConnectionError(#[from] SqlxError),
+    Connection(#[from] SqlxError),
 
     #[error("Pool error: {0}")]
-    PoolError(String),
+    Pool(String),
 
     #[error("Health check error: {0}")]
-    HealthCheckError(SqlxError),
+    HealthCheck(SqlxError),
 }

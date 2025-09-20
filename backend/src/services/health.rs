@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use crate::config::database::{DatabaseConfig, DatabaseError};
+use crate::config::database::DatabaseConfig;
 use crate::utils::database::{test_database_connectivity, PoolInfo};
 
 /// Database connectivity health check response.
@@ -58,34 +58,6 @@ impl HealthStatus {
         }
     }
 
-    /// Create a new healthy status
-    pub fn healthy(pool_size: u32) -> Self {
-        Self::from_database_check(true, pool_size)
-    }
-
-    /// Create a new unhealthy status
-    pub fn unhealthy(pool_size: u32) -> Self {
-        Self::from_database_check(false, pool_size)
-    }
-
-    /// Validate the health status consistency
-    pub fn validate(&self) -> Result<(), DatabaseError> {
-        // Status must be "healthy" when database_accessible is true
-        if self.database_accessible && self.status != "healthy" {
-            return Err(DatabaseError::ConfigurationError(
-                "status must be 'healthy' when database_accessible is true".to_string()
-            ));
-        }
-
-        // Status must be "unhealthy" when database_accessible is false
-        if !self.database_accessible && self.status != "unhealthy" {
-            return Err(DatabaseError::ConfigurationError(
-                "status must be 'unhealthy' when database_accessible is false".to_string()
-            ));
-        }
-
-        Ok(())
-    }
 
     /// Check if the health status is healthy
     pub fn is_healthy(&self) -> bool {
@@ -117,30 +89,6 @@ impl DetailedHealthStatus {
         }
     }
 
-    /// Create a new detailed healthy status
-    pub fn healthy(
-        pool_size: u32,
-        max_connections: u32,
-        idle_connections: u32,
-        config: &DatabaseConfig,
-    ) -> Self {
-        Self::from_database_check(true, pool_size, max_connections, idle_connections, config)
-    }
-
-    /// Create a new detailed unhealthy status
-    pub fn unhealthy(
-        pool_size: u32,
-        max_connections: u32,
-        idle_connections: u32,
-        config: &DatabaseConfig,
-    ) -> Self {
-        Self::from_database_check(false, pool_size, max_connections, idle_connections, config)
-    }
-
-    /// Check if the detailed health status is healthy
-    pub fn is_healthy(&self) -> bool {
-        self.database_accessible && self.status == "healthy"
-    }
 }
 
 /// Health check service implementation
@@ -162,30 +110,6 @@ impl HealthService {
         HealthStatus::from_database_check(database_accessible, pool_size)
     }
 
-    /// Perform a detailed health check with connection pool information
-    pub async fn check_detailed_health(&self) -> Result<DetailedHealthStatus, DatabaseError> {
-        let pool_size = self.pool.get_pool_size();
-        let max_connections = self.pool.get_max_connections();
-        let idle_connections = self.pool.get_idle_connections();
-
-        let database_accessible = test_database_connectivity(&self.pool).await;
-
-        let status = DetailedHealthStatus::from_database_check(
-            database_accessible,
-            pool_size,
-            max_connections,
-            idle_connections,
-            &self.config,
-        );
-
-        if !database_accessible {
-            return Err(DatabaseError::HealthCheckError(
-                sqlx::Error::PoolClosed
-            ));
-        }
-
-        Ok(status)
-    }
 
     /// Perform a detailed health check with graceful error handling
     pub async fn check_detailed_health_safe(&self) -> DetailedHealthStatus {
@@ -204,34 +128,5 @@ impl HealthService {
         )
     }
 
-    /// Get the current pool size
-    pub fn get_pool_size(&self) -> u32 {
-        self.pool.get_pool_size()
-    }
-
-    /// Get pool idle connections count
-    pub fn get_idle_connections(&self) -> u32 {
-        self.pool.get_idle_connections()
-    }
-
-    /// Get the maximum connections configured for the pool
-    pub fn get_max_connections(&self) -> u32 {
-        self.pool.get_max_connections()
-    }
-
-    /// Get a reference to the database configuration
-    pub fn get_config(&self) -> &DatabaseConfig {
-        &self.config
-    }
-
-    /// Check if the pool has available connections
-    pub fn has_available_connections(&self) -> bool {
-        self.pool.has_available_connections()
-    }
-
-    /// Get pool utilization as a percentage (0.0 to 1.0)
-    pub fn get_pool_utilization(&self) -> f32 {
-        self.pool.get_pool_utilization()
-    }
 }
 

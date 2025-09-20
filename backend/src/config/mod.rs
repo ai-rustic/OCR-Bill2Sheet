@@ -18,7 +18,7 @@ impl ConnectionPool {
     pub async fn new(config: DatabaseConfig) -> Result<Self, DatabaseError> {
         // Validate configuration before creating pool
         config.validate().map_err(|e| {
-            DatabaseError::ConfigurationError(format!("Pool initialization failed: {e}"))
+            DatabaseError::Configuration(format!("Pool initialization failed: {e}"))
         })?;
 
         // Create the connection pool
@@ -35,7 +35,7 @@ impl ConnectionPool {
     /// Create ConnectionPool from environment variables with full initialization
     pub async fn from_env() -> Result<Self, DatabaseError> {
         let config = DatabaseConfig::from_env().map_err(|e| {
-            DatabaseError::ConfigurationError(format!("Environment configuration failed: {e}"))
+            DatabaseError::Configuration(format!("Environment configuration failed: {e}"))
         })?;
 
         Self::new(config).await
@@ -45,7 +45,7 @@ impl ConnectionPool {
     async fn initialize_pool(&self) -> Result<(), DatabaseError> {
         // Test initial connection
         self.health_check().await.map_err(|e| {
-            DatabaseError::PoolError(format!("Initial connection test failed: {e}"))
+            DatabaseError::Pool(format!("Initial connection test failed: {e}"))
         })?;
 
         // Warm up pool by acquiring and releasing connections
@@ -106,7 +106,7 @@ impl ConnectionPool {
         }
 
         Err(last_error.unwrap_or_else(|| {
-            DatabaseError::PoolError("Unknown error during pool initialization".to_string())
+            DatabaseError::Pool("Unknown error during pool initialization".to_string())
         }))
     }
 

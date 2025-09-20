@@ -24,7 +24,7 @@ pub async fn test_database_connectivity_detailed(pool: &PgPool) -> Result<(), Da
     sqlx::query("SELECT 1")
         .fetch_one(pool)
         .await
-        .map_err(DatabaseError::HealthCheckError)?;
+        .map_err(DatabaseError::HealthCheck)?;
     Ok(())
 }
 
@@ -42,21 +42,6 @@ pub trait PoolInfo {
     /// Get the maximum allowed connections for the pool
     fn get_max_connections(&self) -> u32;
 
-    /// Check if the pool has available connections
-    fn has_available_connections(&self) -> bool {
-        self.get_idle_connections() > 0 || self.get_pool_size() < self.get_max_connections()
-    }
-
-    /// Get pool utilization as a percentage (0.0 to 1.0)
-    fn get_pool_utilization(&self) -> f32 {
-        let pool_size = self.get_pool_size() as f32;
-        let max_connections = self.get_max_connections() as f32;
-        if max_connections > 0.0 {
-            pool_size / max_connections
-        } else {
-            0.0
-        }
-    }
 }
 
 /// Implement PoolInfo for PgPool directly

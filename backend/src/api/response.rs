@@ -81,45 +81,6 @@ where
         }
     }
 
-    /// Check if the response represents a successful operation
-    ///
-    /// # Returns
-    /// True if success is true and no error is present
-    pub fn is_success(&self) -> bool {
-        self.success && self.error.is_none()
-    }
-
-    /// Check if the response represents an error
-    ///
-    /// # Returns
-    /// True if success is false or an error message is present
-    pub fn is_error(&self) -> bool {
-        !self.success || self.error.is_some()
-    }
-
-    /// Get the data if the response is successful
-    ///
-    /// # Returns
-    /// Some(data) if the response is successful, None otherwise
-    pub fn get_data(&self) -> Option<&T> {
-        if self.is_success() {
-            self.data.as_ref()
-        } else {
-            None
-        }
-    }
-
-    /// Get the error message if the response is an error
-    ///
-    /// # Returns
-    /// Some(error_message) if the response is an error, None otherwise
-    pub fn get_error(&self) -> Option<&String> {
-        if self.is_error() {
-            self.error.as_ref()
-        } else {
-            None
-        }
-    }
 }
 
 impl<T> IntoResponse for ApiResponse<T>

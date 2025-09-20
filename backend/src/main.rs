@@ -6,7 +6,7 @@ mod utils;
 
 use axum::{
     middleware,
-    routing::{get, post, put, delete},
+    routing::{get},
     Router,
 };
 use tracing::{info, error, warn};
@@ -21,7 +21,7 @@ use api::{
 
 /// Type alias for the application state shared across all Axum handlers
 /// This makes it clear what state is available to handlers and improves maintainability
-type AppState = ConnectionPool;
+// type AppState = ConnectionPool;
 
 #[tokio::main]
 async fn main() {

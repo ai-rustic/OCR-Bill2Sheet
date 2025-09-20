@@ -37,24 +37,3 @@ pub struct CreateBill {
     pub vat_amount: Option<rust_decimal::Decimal>,
 }
 
-impl Bill {
-    /// Create a new Bill from CreateBill data
-    pub fn from_create_bill(create_bill: CreateBill, id: i32) -> Self {
-        Self {
-            id,
-            form_no: create_bill.form_no,
-            serial_no: create_bill.serial_no,
-            invoice_no: create_bill.invoice_no,
-            issued_date: create_bill.issued_date,
-            seller_name: create_bill.seller_name,
-            seller_tax_code: create_bill.seller_tax_code,
-            item_name: create_bill.item_name,
-            unit: create_bill.unit,
-            quantity: create_bill.quantity,
-            unit_price: create_bill.unit_price,
-            total_amount: create_bill.total_amount,
-            vat_rate: create_bill.vat_rate,
-            vat_amount: create_bill.vat_amount,
-        }
-    }
-}
