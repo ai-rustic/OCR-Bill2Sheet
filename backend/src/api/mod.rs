@@ -123,14 +123,20 @@ pub async fn timeout_middleware(
     let method = request.method().clone();
     let uri = request.uri().clone();
 
-    // Set a 30-second timeout for all requests
-    match timeout(Duration::from_secs(30), next.run(request)).await {
+    // Set different timeouts based on the endpoint
+    let timeout_duration = if uri.path().starts_with("/api/ocr") {
+        Duration::from_secs(120) // 2 minutes for OCR uploads
+    } else {
+        Duration::from_secs(30)  // 30 seconds for other endpoints
+    };
+
+    match timeout(timeout_duration, next.run(request)).await {
         Ok(response) => Ok(response),
         Err(_) => {
             error!(
                 method = %method,
                 uri = %uri,
-                "Request timed out after 30 seconds"
+                "Request timed out after {} seconds", timeout_duration.as_secs()
             );
             Err(ApiError::ServiceUnavailable(
                 "Request timed out".to_string()

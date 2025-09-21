@@ -6,7 +6,7 @@ mod services;
 mod utils;
 
 use axum::{
-    extract::FromRef,
+    extract::{FromRef, DefaultBodyLimit},
     middleware,
     routing::{get, post, put, delete},
     Router,
@@ -93,7 +93,7 @@ async fn main() {
         // OCR endpoints
         .route("/api/ocr", post(upload_images))
         .fallback(not_found_handler)
-        .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)) // 50MB total request limit
+        .layer(DefaultBodyLimit::max(50 * 1024 * 1024)) // 50MB total request limit
         .layer(middleware::from_fn(request_logging_middleware))
         .layer(middleware::from_fn(error_handling_middleware))
         .layer(middleware::from_fn(timeout_middleware))
