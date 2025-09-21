@@ -45,13 +45,13 @@
 
 ## Phase 3.2: Core Implementation (Individual Endpoint Handlers)
 **Note: Skipping TDD phase per user request and constitutional requirements**
-- [x] T003 [P] Implement GET /bills endpoint in `backend/src/api/bills.rs` (get_all_bills handler)
-- [x] T004 [P] Implement GET /bills/{id} endpoint in `backend/src/api/bills.rs` (get_bill_by_id handler)
-- [x] T005 [P] Implement POST /bills endpoint in `backend/src/api/bills.rs` (create_bill handler)
-- [x] T006 [P] Implement PUT /bills/{id} endpoint in `backend/src/api/bills.rs` (update_bill handler)
-- [x] T007 [P] Implement DELETE /bills/{id} endpoint in `backend/src/api/bills.rs` (delete_bill handler)
-- [x] T008 [P] Implement GET /bills/search endpoint in `backend/src/api/bills.rs` (search_bills handler)
-- [x] T009 [P] Implement GET /bills/count endpoint in `backend/src/api/bills.rs` (get_bills_count handler)
+- [x] T003 [P] Implement GET /api/bills endpoint in `backend/src/api/bills.rs` (get_all_bills handler)
+- [x] T004 [P] Implement GET /api/bills/{id} endpoint in `backend/src/api/bills.rs` (get_bill_by_id handler)
+- [x] T005 [P] Implement POST /api/bills endpoint in `backend/src/api/bills.rs` (create_bill handler)
+- [x] T006 [P] Implement PUT /api/bills/{id} endpoint in `backend/src/api/bills.rs` (update_bill handler)
+- [x] T007 [P] Implement DELETE /api/bills/{id} endpoint in `backend/src/api/bills.rs` (delete_bill handler)
+- [x] T008 [P] Implement GET /api/bills/search endpoint in `backend/src/api/bills.rs` (search_bills handler)
+- [x] T009 [P] Implement GET /api/bills/count endpoint in `backend/src/api/bills.rs` (get_bills_count handler)
 
 ## Phase 3.3: Integration
 - [x] T010 Configure bill routes in main router in `backend/src/main.rs`

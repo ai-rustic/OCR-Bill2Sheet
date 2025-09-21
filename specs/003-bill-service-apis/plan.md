@@ -100,13 +100,13 @@ Since user requested "skip TDD process" and all technical dependencies are alrea
 
 ### API Contracts (contracts/)
 Will generate OpenAPI specs for 7 endpoints:
-- GET /bills - List all bills
-- GET /bills/{id} - Get bill by ID
-- POST /bills - Create new bill
-- PUT /bills/{id} - Update bill
-- DELETE /bills/{id} - Delete bill
-- GET /bills/search?invoice={pattern} - Search by invoice number
-- GET /bills/count - Get total count
+- GET /api/bills - List all bills
+- GET /api/bills/{id} - Get bill by ID
+- POST /api/bills - Create new bill
+- PUT /api/bills/{id} - Update bill
+- DELETE /api/bills/{id} - Delete bill
+- GET /api/bills/search?invoice={pattern} - Search by invoice number
+- GET /api/bills/count - Get total count
 
 ### Response Structure
 Consistent JSON format:

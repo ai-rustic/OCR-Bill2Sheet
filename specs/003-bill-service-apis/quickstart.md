@@ -12,7 +12,7 @@ This quickstart guide demonstrates how to manually test all 7 Bill Service API e
 
 ### 1. Get All Bills
 ```bash
-curl -X GET http://localhost:3000/bills \
+curl -X GET http://localhost:3000/api/bills \
   -H "Content-Type: application/json"
 ```
 
@@ -34,7 +34,7 @@ curl -X GET http://localhost:3000/bills \
 
 ### 2. Get Bill by ID
 ```bash
-curl -X GET http://localhost:3000/bills/1 \
+curl -X GET http://localhost:3000/api/bills/1 \
   -H "Content-Type: application/json"
 ```
 
@@ -54,7 +54,7 @@ curl -X GET http://localhost:3000/bills/1 \
 
 ### 3. Create New Bill
 ```bash
-curl -X POST http://localhost:3000/bills \
+curl -X POST http://localhost:3000/api/bills \
   -H "Content-Type: application/json" \
   -d '{
     "form_no": "Mẫu 01-GTKT",
@@ -88,7 +88,7 @@ curl -X POST http://localhost:3000/bills \
 
 ### 4. Update Existing Bill
 ```bash
-curl -X PUT http://localhost:3000/bills/1 \
+curl -X PUT http://localhost:3000/api/bills/1 \
   -H "Content-Type: application/json" \
   -d '{
     "form_no": "Mẫu 01-GTKT",
@@ -122,7 +122,7 @@ curl -X PUT http://localhost:3000/bills/1 \
 
 ### 5. Search Bills by Invoice Number
 ```bash
-curl -X GET "http://localhost:3000/bills/search?invoice=2024" \
+curl -X GET "http://localhost:3000/api/bills/search?invoice=2024" \
   -H "Content-Type: application/json"
 ```
 
@@ -148,7 +148,7 @@ curl -X GET "http://localhost:3000/bills/search?invoice=2024" \
 
 ### 6. Get Bills Count
 ```bash
-curl -X GET http://localhost:3000/bills/count \
+curl -X GET http://localhost:3000/api/bills/count \
   -H "Content-Type: application/json"
 ```
 
@@ -163,7 +163,7 @@ curl -X GET http://localhost:3000/bills/count \
 
 ### 7. Delete Bill
 ```bash
-curl -X DELETE http://localhost:3000/bills/2 \
+curl -X DELETE http://localhost:3000/api/bills/2 \
   -H "Content-Type: application/json"
 ```
 
@@ -180,7 +180,7 @@ curl -X DELETE http://localhost:3000/bills/2 \
 
 ### 404 - Bill Not Found
 ```bash
-curl -X GET http://localhost:3000/bills/999
+curl -X GET http://localhost:3000/api/bills/999
 ```
 
 **Expected Response:**
@@ -194,7 +194,7 @@ curl -X GET http://localhost:3000/bills/999
 
 ### 400 - Invalid Request Data
 ```bash
-curl -X POST http://localhost:3000/bills \
+curl -X POST http://localhost:3000/api/bills \
   -H "Content-Type: application/json" \
   -d '{ "invalid": "json structure" }'
 ```
@@ -210,7 +210,7 @@ curl -X POST http://localhost:3000/bills \
 
 ### 400 - Missing Search Parameter
 ```bash
-curl -X GET "http://localhost:3000/bills/search" \
+curl -X GET "http://localhost:3000/api/bills/search" \
   -H "Content-Type: application/json"
 ```
 

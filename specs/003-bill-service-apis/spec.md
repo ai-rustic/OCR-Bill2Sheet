@@ -3,35 +3,35 @@
 **Feature Branch**: `003-bill-service-apis`
 **Created**: 2025-09-19
 **Status**: Draft
-**Input**: User description: "Bill Service APIs: GET /bills Retrieve all bills. GET /bills/{id} Retrieve a specific bill by ID. POST /bills Create a new bill (request body: full bill data). PUT /bills/{id} Update a bill by ID (request body: fields to update). DELETE /bills/{id} Delete a bill by ID. GET /bills/search?invoice={pattern} Search bills by invoice number (partial match). GET /bills/count Get the total count of bills. Requirements: Each API should use proper HTTP status codes. Return consistent JSON response structure (success, data, error)."
+**Input**: User description: "Bill Service APIs: GET /api/bills Retrieve all bills. GET /api/bills/{id} Retrieve a specific bill by ID. POST /api/bills Create a new bill (request body: full bill data). PUT /api/bills/{id} Update a bill by ID (request body: fields to update). DELETE /api/bills/{id} Delete a bill by ID. GET /api/bills/search?invoice={pattern} Search bills by invoice number (partial match). GET /api/bills/count Get the total count of bills. Requirements: Each API should use proper HTTP status codes. Return consistent JSON response structure (success, data, error)."
 
 ## Execution Flow (main)
 ```
 1. Parse user description from Input
-   ’ User requests REST API endpoints for bill management operations
+   ï¿½ User requests REST API endpoints for bill management operations
 2. Extract key concepts from description
-   ’ Actors: API consumers (likely frontend/external systems)
-   ’ Actions: CRUD operations on bills, search, count
-   ’ Data: Vietnamese invoice/bill data with existing 14-field structure
-   ’ Constraints: HTTP standards, consistent JSON responses
+   ï¿½ Actors: API consumers (likely frontend/external systems)
+   ï¿½ Actions: CRUD operations on bills, search, count
+   ï¿½ Data: Vietnamese invoice/bill data with existing 14-field structure
+   ï¿½ Constraints: HTTP standards, consistent JSON responses
 3. For each unclear aspect:
-   ’ [NEEDS CLARIFICATION: Authentication/authorization requirements not specified]
-   ’ [NEEDS CLARIFICATION: Pagination requirements for listing endpoints not specified]
-   ’ [NEEDS CLARIFICATION: Rate limiting or API quotas not specified]
+   ï¿½ [NEEDS CLARIFICATION: Authentication/authorization requirements not specified]
+   ï¿½ [NEEDS CLARIFICATION: Pagination requirements for listing endpoints not specified]
+   ï¿½ [NEEDS CLARIFICATION: Rate limiting or API quotas not specified]
 4. Fill User Scenarios & Testing section
-   ’ Clear API operation flows for bill management
+   ï¿½ Clear API operation flows for bill management
 5. Generate Functional Requirements
-   ’ Each API endpoint with expected behavior
+   ï¿½ Each API endpoint with expected behavior
 6. Identify Key Entities
-   ’ Bill entity already exists with 14 fields
+   ï¿½ Bill entity already exists with 14 fields
 7. Run Review Checklist
-   ’ WARN "Spec has uncertainties regarding auth and pagination"
+   ï¿½ WARN "Spec has uncertainties regarding auth and pagination"
 8. Return: SUCCESS (spec ready for planning)
 ```
 
 ---
 
-## ¡ Quick Guidelines
+## ï¿½ Quick Guidelines
 -  Focus on WHAT users need and WHY
 - L Avoid HOW to implement (no tech stack, APIs, code structure)
 - =e Written for business stakeholders, not developers

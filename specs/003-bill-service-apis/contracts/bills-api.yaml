@@ -10,7 +10,7 @@ servers:
     description: Development server
 
 paths:
-  /bills:
+  /api/bills:
     get:
       summary: Retrieve all bills
       description: Get a list of all bills in the system
@@ -58,7 +58,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /bills/{id}:
+  /api/bills/{id}:
     get:
       summary: Retrieve a specific bill
       description: Get a bill by its unique ID
@@ -165,7 +165,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /bills/search:
+  /api/bills/search:
     get:
       summary: Search bills by invoice number
       description: Search for bills by invoice number pattern (partial match)
@@ -197,7 +197,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /bills/count:
+  /api/bills/count:
     get:
       summary: Get total count of bills
       description: Retrieve the total number of bills in the system
