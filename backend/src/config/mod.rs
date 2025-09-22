@@ -1,9 +1,11 @@
 pub mod database;
 pub mod upload_config;
+pub mod gemini_config;
 
 use sqlx::PgPool;
 pub use database::{DatabaseConfig, DatabaseError};
 pub use upload_config::UploadConfig;
+pub use gemini_config::{GeminiConfig, GeminiConfigError};
 use crate::utils::database::{test_database_connectivity_detailed, PoolInfo};
 
 /// Wrapper around SQLx PgPool for database connection management.
