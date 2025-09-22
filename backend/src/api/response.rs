@@ -81,6 +81,25 @@ where
         }
     }
 
+    /// Check if the response represents a successful operation
+    pub fn is_success(&self) -> bool {
+        self.success
+    }
+
+    /// Check if the response represents an error
+    pub fn is_error(&self) -> bool {
+        !self.success
+    }
+
+    /// Get a reference to the data payload
+    pub fn get_data(&self) -> Option<&T> {
+        self.data.as_ref()
+    }
+
+    /// Get a reference to the error message
+    pub fn get_error(&self) -> Option<&String> {
+        self.error.as_ref()
+    }
 }
 
 impl<T> IntoResponse for ApiResponse<T>

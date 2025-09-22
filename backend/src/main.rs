@@ -3,43 +3,29 @@ mod config;
 mod errors;
 mod models;
 mod services;
+mod state;
 mod utils;
 
 use axum::{
-    extract::{FromRef, DefaultBodyLimit},
+    extract::DefaultBodyLimit,
     middleware,
-    routing::{get, post, put, delete},
+    routing::{get, post},
     Router,
 };
-use tower_http::limit::RequestBodyLimitLayer;
+// use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{info, error, warn};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::broadcast;
 
 use config::{ConnectionPool, DatabaseConfig, UploadConfig};
-
-#[derive(Clone)]
-pub struct AppState {
-    pub pool: ConnectionPool,
-    pub upload_config: Arc<UploadConfig>,
-}
-
-impl FromRef<AppState> for ConnectionPool {
-    fn from_ref(app_state: &AppState) -> Self {
-        app_state.pool.clone()
-    }
-}
-
-impl FromRef<AppState> for Arc<UploadConfig> {
-    fn from_ref(app_state: &AppState) -> Self {
-        app_state.upload_config.clone()
-    }
-}
+use models::ProcessingEvent;
+use state::AppState;
 use api::{
     get_health, get_health_detail, error_handling_middleware, timeout_middleware, not_found_handler,
     get_all_bills, get_bill_by_id, create_bill, update_bill, delete_bill, search_bills, get_bills_count,
-    upload_images
+    upload_images, upload_images_sse
 };
 
 
@@ -74,10 +60,15 @@ async fn main() {
         }
     };
 
+    // Create event broadcaster for SSE
+    let (event_broadcaster, _) = broadcast::channel(1000);
+    info!("Event broadcaster initialized with buffer size: 1000");
+
     // Create unified application state
     let app_state = AppState {
         pool: pool.clone(),
         upload_config: upload_config.clone(),
+        event_broadcaster,
     };
 
     // Create router with unified state
@@ -91,7 +82,7 @@ async fn main() {
         .route("/api/bills/count", get(get_bills_count))
         .route("/api/bills/{id}", get(get_bill_by_id).put(update_bill).delete(delete_bill))
         // OCR endpoints
-        .route("/api/ocr", post(upload_images))
+        .route("/api/ocr", post(upload_images_sse))
         .fallback(not_found_handler)
         .layer(DefaultBodyLimit::max(50 * 1024 * 1024)) // 50MB total request limit
         .layer(middleware::from_fn(request_logging_middleware))

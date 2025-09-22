@@ -24,10 +24,10 @@ pub use bills::{
     get_all_bills, get_bill_by_id, create_bill, update_bill,
     delete_bill, search_bills, get_bills_count
 };
-pub use ocr::upload_images;
+pub use ocr::{upload_images, upload_images_sse};
 
 // Re-export response utilities
-pub use response::{ApiResponse, EmptyResponse, StringResponse, JsonResponse};
+pub use response::{ApiResponse};
 
 // Middleware functions are defined in this module and will be used in main.rs
 

@@ -7,10 +7,12 @@ edition = "2024"
 name = "backend"
 
 [dependencies]
+async-stream = "0.3"
 axum = { version = "0.8.4", features = ["multipart"] }
 axum_typed_multipart = "0.12.0"
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15.7"
+futures-util = "0.3"
 image = "0.25.0"
 infer = "0.16.0"
 rust_decimal = { version = "1.36", features = ["serde"] }
@@ -20,6 +22,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "postgres", "macros", "
 tempfile = "3.0"
 thiserror = "1.0"
 tokio = { version = "1.47.1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
 tower = { version = "0.5.2", features = ["timeout"] }
 tower-http = { version = "0.6.1", features = ["limit"] }
 tracing = "0.1"
