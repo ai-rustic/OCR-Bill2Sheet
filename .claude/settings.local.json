@@ -8,7 +8,9 @@
       "Bash(timeout 5s cargo run)",
       "Bash(psql:*)",
       "Bash(curl:*)",
-      "Bash(rustc:*)"
+      "Bash(rustc:*)",
+      "mcp__shadcn__getComponents",
+      "Bash(npx shadcn@latest add:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 ﻿/ru# OCR_Bill2Sheet Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2025-09-22
+Auto-generated from all feature plans. Last updated: 2025-09-23
 
 ## Active Technologies
 - Rust 1.75+ (edition = "2024") + Axum 0.8.4, SQLx 0.8.6 (postgres, runtime-tokio, macros), Tokio 1.47.1, dotenvy 0.15.7 (HEAD)
@@ -107,6 +107,7 @@ let results = bill_service.search_bills_by_invoice("2024").await?;
 5. Validate Vietnamese text and financial precision
 
 <!-- MANUAL ADDITIONS END -->
+
 
 
 
