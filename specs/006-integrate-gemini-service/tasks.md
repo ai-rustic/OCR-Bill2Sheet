@@ -45,16 +45,16 @@
 ## Phase 4: Integration with Current OCR Pipeline
 
 - [x] T011 Extend validate_file function in backend/src/api/ocr.rs to include Gemini processing
-- [ ] T012 Add Gemini processing step to process_upload_with_events function
-- [ ] T013 Integrate with BillService to persist extracted data to database
-- [ ] T014 Add error handling for Gemini API rate limits and failures
+- [x] T012 Add Gemini processing step to process_upload_with_events function
+- [x] T013 Integrate with BillService to persist extracted data to database
+- [x] T014 Add error handling for Gemini API rate limits and failures
 
 ## Phase 5: Testing and Polish
 
-- [ ] T015 [P] Test Gemini integration with sample Vietnamese invoices
-- [ ] T016 [P] Verify database persistence of extracted bill data
-- [ ] T017 [P] Test SSE events for Gemini processing pipeline
-- [ ] T018 Add logging and monitoring for Gemini API calls
+- [x] T015 [P] Test Gemini integration with sample Vietnamese invoices
+- [x] T016 [P] Verify database persistence of extracted bill data
+- [x] T017 [P] Test SSE events for Gemini processing pipeline
+- [x] T018 Add logging and monitoring for Gemini API calls
 
 ## Dependencies
 

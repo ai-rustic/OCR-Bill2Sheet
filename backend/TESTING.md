@@ -105,7 +105,7 @@ DEBUG Encoding image to base64
 DEBUG Successfully encoded image to base64, length: 326831
 DEBUG Created GeminiRequest with Vietnamese bill extraction prompt
 DEBUG Gemini API request attempt 1 of 4
-DEBUG Sending request to Gemini API: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
+DEBUG Sending request to Gemini API: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
 DEBUG Sending HTTP request to Gemini API with timeout of 30 seconds
 DEBUG Received HTTP response with status: 200
 DEBUG Parsing JSON response from Gemini API

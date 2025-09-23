@@ -3,58 +3,83 @@
 //! This module defines the data structures for receiving responses from the Gemini AI API
 //! for Vietnamese bill/invoice OCR processing. The structure mirrors the bills database schema.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
+
+fn deserialize_null_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    Ok(opt.filter(|s| s != "null" && !s.is_empty()))
+}
+
+fn deserialize_null_number<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<f64>::deserialize(deserializer)
+}
 
 /// Response payload from Gemini AI API
 ///
 /// Contains structured bill data extracted from Vietnamese invoices.
 /// All fields are optional as extraction may not find all information.
-/// Fields mirror the bills database schema exactly.
+/// Fields mirror the bills database schema exactly and response schema.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GeminiResponse {
-    /// Form number (Số/Mẫu hóa đơn)
+    /// Form number (Mẫu số hóa đơn)
+    #[serde(deserialize_with = "deserialize_null_string")]
     pub form_no: Option<String>,
 
+    /// Serial number (Ký hiệu hóa đơn)
+    #[serde(deserialize_with = "deserialize_null_string")]
+    pub serial_no: Option<String>,
+
     /// Invoice number (Số hóa đơn)
+    #[serde(deserialize_with = "deserialize_null_string")]
     pub invoice_no: Option<String>,
 
-    /// Invoice series (Ký hiệu hóa đơn)
-    pub invoice_series: Option<String>,
-
     /// Invoice date in string format (will be parsed to NaiveDate)
-    pub invoice_date: Option<String>,
+    #[serde(deserialize_with = "deserialize_null_string")]
+    pub issued_date: Option<String>,
 
     /// Seller company name (Tên người bán)
+    #[serde(deserialize_with = "deserialize_null_string")]
     pub seller_name: Option<String>,
 
     /// Seller tax code (Mã số thuế người bán)
+    #[serde(deserialize_with = "deserialize_null_string")]
     pub seller_tax_code: Option<String>,
 
-    /// Seller address (Địa chỉ người bán)
-    pub seller_address: Option<String>,
+    /// Item name (Tên hàng hóa/dịch vụ)
+    #[serde(deserialize_with = "deserialize_null_string")]
+    pub item_name: Option<String>,
 
-    /// Buyer name (Tên người mua)
-    pub buyer_name: Option<String>,
+    /// Unit (Đơn vị tính)
+    #[serde(deserialize_with = "deserialize_null_string")]
+    pub unit: Option<String>,
 
-    /// Buyer tax code (Mã số thuế người mua)
-    pub buyer_tax_code: Option<String>,
+    /// Quantity (Số lượng)
+    #[serde(deserialize_with = "deserialize_null_number")]
+    pub quantity: Option<f64>,
 
-    /// Buyer address (Địa chỉ người mua)
-    pub buyer_address: Option<String>,
+    /// Unit price (Đơn giá)
+    #[serde(deserialize_with = "deserialize_null_number")]
+    pub unit_price: Option<f64>,
 
-    /// Total amount as string (will be parsed to Decimal)
-    pub total_amount: Option<String>,
+    /// Total amount (Thành tiền)
+    #[serde(deserialize_with = "deserialize_null_number")]
+    pub total_amount: Option<f64>,
 
-    /// Tax rate percentage as string (will be parsed to Decimal)
-    pub tax_rate: Option<String>,
+    /// VAT rate percentage (Thuế suất VAT)
+    #[serde(deserialize_with = "deserialize_null_number")]
+    pub vat_rate: Option<f64>,
 
-    /// Tax amount as string (will be parsed to Decimal)
-    pub tax_amount: Option<String>,
-
-    /// Payment method (Hình thức thanh toán)
-    pub payment_method: Option<String>,
+    /// VAT amount (Tiền thuế VAT)
+    #[serde(deserialize_with = "deserialize_null_number")]
+    pub vat_amount: Option<f64>,
 }
 
 impl GeminiResponse {
@@ -62,67 +87,62 @@ impl GeminiResponse {
     pub fn new() -> Self {
         Self {
             form_no: None,
+            serial_no: None,
             invoice_no: None,
-            invoice_series: None,
-            invoice_date: None,
+            issued_date: None,
             seller_name: None,
             seller_tax_code: None,
-            seller_address: None,
-            buyer_name: None,
-            buyer_tax_code: None,
-            buyer_address: None,
+            item_name: None,
+            unit: None,
+            quantity: None,
+            unit_price: None,
             total_amount: None,
-            tax_rate: None,
-            tax_amount: None,
-            payment_method: None,
+            vat_rate: None,
+            vat_amount: None,
         }
     }
 
-    /// Parse invoice date string to NaiveDate
+    /// Parse issued date string to NaiveDate
     ///
-    /// Attempts to parse the invoice_date field using common Vietnamese date formats.
+    /// Attempts to parse the issued_date field using common date formats.
     /// Returns None if parsing fails or field is empty.
-    pub fn parse_invoice_date(&self) -> Option<NaiveDate> {
-        self.invoice_date.as_ref()?.parse().ok()
+    pub fn parse_issued_date(&self) -> Option<NaiveDate> {
+        self.issued_date.as_ref()?.parse().ok()
     }
 
-    /// Parse total amount string to Decimal
+    /// Convert total amount f64 to Decimal
     ///
-    /// Attempts to parse the total_amount field to Decimal for precise calculations.
-    /// Handles Vietnamese number formatting (removes separators).
-    pub fn parse_total_amount(&self) -> Option<Decimal> {
-        self.total_amount.as_ref()?
-            .replace(",", "")
-            .replace(".", "")
-            .replace(" ", "")
-            .parse()
-            .ok()
+    /// Converts the total_amount field to Decimal for precise calculations.
+    pub fn get_total_amount_decimal(&self) -> Option<Decimal> {
+        self.total_amount.map(|amount| Decimal::try_from(amount).unwrap_or_default())
     }
 
-    /// Parse tax rate string to Decimal
+    /// Convert VAT rate f64 to Decimal
     ///
-    /// Attempts to parse the tax_rate field to Decimal percentage.
-    /// Handles Vietnamese percentage formatting.
-    pub fn parse_tax_rate(&self) -> Option<Decimal> {
-        self.tax_rate.as_ref()?
-            .replace("%", "")
-            .replace(",", ".")
-            .replace(" ", "")
-            .parse()
-            .ok()
+    /// Converts the vat_rate field to Decimal percentage.
+    pub fn get_vat_rate_decimal(&self) -> Option<Decimal> {
+        self.vat_rate.map(|rate| Decimal::try_from(rate).unwrap_or_default())
     }
 
-    /// Parse tax amount string to Decimal
+    /// Convert VAT amount f64 to Decimal
     ///
-    /// Attempts to parse the tax_amount field to Decimal for precise calculations.
-    /// Handles Vietnamese number formatting (removes separators).
-    pub fn parse_tax_amount(&self) -> Option<Decimal> {
-        self.tax_amount.as_ref()?
-            .replace(",", "")
-            .replace(".", "")
-            .replace(" ", "")
-            .parse()
-            .ok()
+    /// Converts the vat_amount field to Decimal for precise calculations.
+    pub fn get_vat_amount_decimal(&self) -> Option<Decimal> {
+        self.vat_amount.map(|amount| Decimal::try_from(amount).unwrap_or_default())
+    }
+
+    /// Convert quantity f64 to Decimal
+    ///
+    /// Converts the quantity field to Decimal for precise calculations.
+    pub fn get_quantity_decimal(&self) -> Option<Decimal> {
+        self.quantity.map(|qty| Decimal::try_from(qty).unwrap_or_default())
+    }
+
+    /// Convert unit price f64 to Decimal
+    ///
+    /// Converts the unit_price field to Decimal for precise calculations.
+    pub fn get_unit_price_decimal(&self) -> Option<Decimal> {
+        self.unit_price.map(|price| Decimal::try_from(price).unwrap_or_default())
     }
 
     /// Validate that at least some essential fields are present

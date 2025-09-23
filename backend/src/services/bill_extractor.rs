@@ -52,44 +52,32 @@ impl BillDataExtractor {
             ));
         }
 
-        // Parse invoice date if present
-        let issued_date = if let Some(date_str) = &gemini_response.invoice_date {
+        // Parse issued date if present
+        let issued_date = if let Some(date_str) = &gemini_response.issued_date {
             Some(self.parse_vietnamese_date(date_str)?)
         } else {
             None
         };
 
-        // Parse financial amounts
-        let total_amount = if let Some(amount_str) = &gemini_response.total_amount {
-            Some(self.parse_vietnamese_amount(amount_str)?)
-        } else {
-            None
-        };
-
-        let vat_rate = if let Some(rate_str) = &gemini_response.tax_rate {
-            Some(self.parse_vietnamese_percentage(rate_str)?)
-        } else {
-            None
-        };
-
-        let vat_amount = if let Some(amount_str) = &gemini_response.tax_amount {
-            Some(self.parse_vietnamese_amount(amount_str)?)
-        } else {
-            None
-        };
+        // Convert f64 amounts to Decimal
+        let total_amount = gemini_response.get_total_amount_decimal();
+        let vat_rate = gemini_response.get_vat_rate_decimal();
+        let vat_amount = gemini_response.get_vat_amount_decimal();
+        let quantity = gemini_response.get_quantity_decimal();
+        let unit_price = gemini_response.get_unit_price_decimal();
 
         // Create the bill structure
         Ok(CreateBill {
             form_no: gemini_response.form_no.clone(),
-            serial_no: gemini_response.invoice_series.clone(), // Map invoice_series to serial_no
+            serial_no: gemini_response.serial_no.clone(),
             invoice_no: gemini_response.invoice_no.clone(),
             issued_date,
             seller_name: gemini_response.seller_name.clone(),
             seller_tax_code: gemini_response.seller_tax_code.clone(),
-            item_name: None, // Not available in Gemini response, would need line item extraction
-            unit: None,      // Not available in Gemini response, would need line item extraction
-            quantity: None,  // Not available in Gemini response, would need line item extraction
-            unit_price: None, // Not available in Gemini response, would need line item extraction
+            item_name: gemini_response.item_name.clone(),
+            unit: gemini_response.unit.clone(),
+            quantity,
+            unit_price,
             total_amount,
             vat_rate,
             vat_amount,
@@ -303,19 +291,18 @@ mod tests {
         let extractor = BillDataExtractor::new();
         let gemini_response = GeminiResponse {
             form_no: Some("01-GTKT".to_string()),
+            serial_no: Some("AA/24E".to_string()),
             invoice_no: Some("00000001".to_string()),
-            invoice_series: Some("AA/24E".to_string()),
-            invoice_date: Some("31/12/2024".to_string()),
+            issued_date: Some("31/12/2024".to_string()),
             seller_name: Some("CÔNG TY ABC".to_string()),
             seller_tax_code: Some("0123456789".to_string()),
-            seller_address: Some("123 Đường ABC, Hà Nội".to_string()),
-            buyer_name: Some("KHÁCH HÀNG XYZ".to_string()),
-            buyer_tax_code: Some("9876543210".to_string()),
-            buyer_address: Some("456 Đường XYZ, TP.HCM".to_string()),
-            total_amount: Some("1.000.000".to_string()),
-            tax_rate: Some("10%".to_string()),
-            tax_amount: Some("100.000".to_string()),
-            payment_method: Some("Tiền mặt".to_string()),
+            item_name: Some("Hàng hóa".to_string()),
+            unit: Some("Chiếc".to_string()),
+            quantity: Some(1.0),
+            unit_price: Some(909090.91),
+            total_amount: Some(1000000.0),
+            vat_rate: Some(10.0),
+            vat_amount: Some(100000.0),
         };
 
         let result = extractor.extract_bill_data(&gemini_response);
@@ -329,5 +316,9 @@ mod tests {
         assert_eq!(bill.total_amount, Some(Decimal::from(1000000)));
         assert_eq!(bill.vat_rate, Some(Decimal::from(10)));
         assert_eq!(bill.vat_amount, Some(Decimal::from(100000)));
+        assert_eq!(bill.item_name, Some("Hàng hóa".to_string()));
+        assert_eq!(bill.unit, Some("Chiếc".to_string()));
+        assert_eq!(bill.quantity, Some(Decimal::from(1)));
+        assert_eq!(bill.unit_price, Some(Decimal::new(90909091, 2)));
     }
 }

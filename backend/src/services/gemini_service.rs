@@ -66,7 +66,7 @@ impl Default for GeminiConfig {
             timeout_seconds: 30,
             max_retries: 3,
             retry_delay_ms: 1000,
-            model: "gemini-1.5-flash".to_string(),
+            model: "gemini-2.5-flash".to_string(), // Support response schema from v1beta
         }
     }
 }
@@ -216,7 +216,7 @@ impl GeminiService {
         );
         debug!("Sending request to Gemini API: {}", url);
 
-        // Build the request payload according to Gemini API format
+        // Build the request payload according to Gemini API format with response schema
         let payload = json!({
             "contents": [{
                 "parts": [
@@ -232,11 +232,80 @@ impl GeminiService {
                 ]
             }],
             "generationConfig": {
-                "temperature": 0.1,
-                "topK": 1,
-                "topP": 0.8,
-                "maxOutputTokens": 2048,
-                "stopSequences": []
+                "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "object",
+                    "properties": {
+                        "form_no": {
+                            "type": "string",
+                            "description": "Mẫu số hóa đơn (ví dụ: 01-GTKT, 02-GTTT)"
+                        },
+                        "serial_no": {
+                            "type": "string",
+                            "description": "Ký hiệu hóa đơn (ví dụ: AA/24E, BB/25F)"
+                        },
+                        "invoice_no": {
+                            "type": "string",
+                            "description": "Số hóa đơn"
+                        },
+                        "issued_date": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "Ngày lập hóa đơn (YYYY-MM-DD)"
+                        },
+                        "seller_name": {
+                            "type": "string",
+                            "description": "Tên người bán/công ty"
+                        },
+                        "seller_tax_code": {
+                            "type": "string",
+                            "description": "Mã số thuế của người bán"
+                        },
+                        "item_name": {
+                            "type": "string",
+                            "description": "Tên hàng hóa/dịch vụ"
+                        },
+                        "unit": {
+                            "type": "string",
+                            "description": "Đơn vị tính (ví dụ: cái, kg, giờ, m2)"
+                        },
+                        "quantity": {
+                            "type": "number",
+                            "description": "Số lượng hàng hóa/dịch vụ"
+                        },
+                        "unit_price": {
+                            "type": "number",
+                            "description": "Đơn giá (VND)"
+                        },
+                        "total_amount": {
+                            "type": "number",
+                            "description": "Thành tiền trước thuế (VND)"
+                        },
+                        "vat_rate": {
+                            "type": "number",
+                            "description": "Thuế suất VAT (%) - ví dụ: 0, 5, 8, 10"
+                        },
+                        "vat_amount": {
+                            "type": "number",
+                            "description": "Tiền thuế VAT (VND)"
+                        }
+                    },
+                    "required": [
+                        "form_no",
+                        "serial_no",
+                        "invoice_no",
+                        "issued_date",
+                        "seller_name",
+                        "seller_tax_code",
+                        "item_name",
+                        "unit",
+                        "quantity",
+                        "unit_price",
+                        "total_amount",
+                        "vat_rate",
+                        "vat_amount"
+                    ]
+                }
             },
             "safetySettings": [
                 {
@@ -331,7 +400,7 @@ impl GeminiService {
 
     /// Parse Gemini API response and extract GeminiResponse
     async fn parse_gemini_response(&self, response: Value) -> Result<GeminiResponse, GeminiError> {
-        // Extract the generated text from Gemini response
+        // Extract the generated content from Gemini response
         let candidates = response["candidates"]
             .as_array()
             .ok_or_else(|| GeminiError::InvalidResponseFormat("Missing candidates array".to_string()))?;
@@ -340,20 +409,27 @@ impl GeminiService {
             return Err(GeminiError::InvalidResponseFormat("Empty candidates array".to_string()));
         }
 
+        // With response schema, Gemini returns structured JSON directly
         let content = &candidates[0]["content"]["parts"][0]["text"]
             .as_str()
             .ok_or_else(|| GeminiError::InvalidResponseFormat("Missing text content".to_string()))?;
 
-        // Parse the JSON response from Gemini
-        // Clean the response to handle potential markdown formatting
+        // Since we're using response schema, the content should be valid JSON
+        // But we still clean it in case there are any formatting issues
         let cleaned_content = self.clean_json_response(content);
+
+        debug!("Parsing structured JSON response from Gemini: {}", cleaned_content);
 
         let gemini_response: GeminiResponse = serde_json::from_str(&cleaned_content)
             .map_err(|e| {
+                error!("Failed to parse structured JSON response: {}. Response: {}", e, cleaned_content);
                 GeminiError::InvalidResponseFormat(
-                    format!("Failed to parse JSON response: {}. Response: {}", e, cleaned_content)
+                    format!("Failed to parse structured JSON response: {}. Response: {}", e, cleaned_content)
                 )
             })?;
+
+        debug!("Successfully parsed structured response with form_no={:?}, invoice_no={:?}",
+               gemini_response.form_no, gemini_response.invoice_no);
 
         Ok(gemini_response)
     }
@@ -523,7 +599,7 @@ mod tests {
         assert_eq!(config.base_url, "https://generativelanguage.googleapis.com/v1beta");
         assert_eq!(config.timeout_seconds, 30);
         assert_eq!(config.max_retries, 3);
-        assert_eq!(config.model, "gemini-1.5-flash");
+        assert_eq!(config.model, "gemini-2.5-flash");
     }
 
     #[tokio::test]
