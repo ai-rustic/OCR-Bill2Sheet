@@ -8,12 +8,18 @@ use std::{convert::Infallible, pin::Pin, sync::Arc, time::Instant};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 use chrono::Utc;
+use tracing::{info, warn, error, debug, instrument};
 
 use crate::{
     config::UploadConfig,
     errors::UploadError,
     models::{ProcessingEvent, ValidationErrorCode, ProcessingErrorType, ImageFileInfo, ValidationStatus},
-    services::image_validation::{validate_image_format, validate_file_size},
+    services::{
+        image_validation::{validate_image_format, validate_file_size},
+        gemini_service::{GeminiService, GeminiError},
+        bill_extractor::BillDataExtractor,
+        bill_service::BillService,
+    },
     state::AppState,
 };
 
@@ -23,10 +29,11 @@ pub async fn upload_images_sse(
 ) -> Result<impl IntoResponse, UploadError> {
     let session_id = Uuid::new_v4().to_string();
     let broadcaster = app_state.event_broadcaster.clone();
+    let app_state_clone = app_state.clone();
 
     // Start background processing
     tokio::spawn(async move {
-        if let Err(e) = process_upload_with_events(multipart, broadcaster.clone(), session_id.clone(), app_state.upload_config).await {
+        if let Err(e) = process_upload_with_events(multipart, broadcaster.clone(), session_id.clone(), app_state_clone).await {
             let _ = broadcaster.send(ProcessingEvent::ProcessingError {
                 session_id,
                 error_message: e.to_string(),
@@ -49,6 +56,10 @@ pub async fn upload_images_sse(
                 ProcessingEvent::AllImagesValidated { .. } => "all_images_validated",
                 ProcessingEvent::ProcessingComplete { .. } => "processing_complete",
                 ProcessingEvent::ProcessingError { .. } => "processing_error",
+                ProcessingEvent::GeminiProcessingStart { .. } => "gemini_processing_start",
+                ProcessingEvent::GeminiProcessingSuccess { .. } => "gemini_processing_success",
+                ProcessingEvent::GeminiProcessingError { .. } => "gemini_processing_error",
+                ProcessingEvent::BillDataSaved { .. } => "bill_data_saved",
             };
 
             let data = serde_json::to_string(&event).unwrap_or_default();
@@ -68,8 +79,9 @@ async fn process_upload_with_events(
     mut multipart: Multipart,
     broadcaster: broadcast::Sender<ProcessingEvent>,
     session_id: String,
-    config: Arc<UploadConfig>,
+    app_state: AppState,
 ) -> Result<(), UploadError> {
+    let config = app_state.upload_config.clone();
     let start_time = Instant::now();
     let mut files = Vec::new();
 
@@ -120,7 +132,22 @@ async fn process_upload_with_events(
                     file_info,
                     timestamp: Utc::now(),
                 });
-                successful_files += 1;
+
+                // Process with Gemini after successful validation
+                match process_with_gemini(data, file_index, file_name.clone(), broadcaster.clone(), &app_state.pool).await {
+                    Ok(()) => {
+                        successful_files += 1;
+                    }
+                    Err(e) => {
+                        // Log Gemini error but don't fail the entire upload
+                        let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
+                            file_index,
+                            error_message: format!("Gemini processing failed: {}", e),
+                            timestamp: Utc::now(),
+                        });
+                        successful_files += 1; // Still count as successful since image validation passed
+                    }
+                }
             }
             Err(error) => {
                 let _ = broadcaster.send(ProcessingEvent::ImageValidationError {
@@ -172,6 +199,124 @@ async fn validate_file(data: &[u8], config: &UploadConfig, file_index: usize) ->
         processed_at: Utc::now(),
         processing_duration_ms: processing_duration,
     })
+}
+
+/// Process image with Gemini AI and save extracted bill data
+#[instrument(skip(image_data, broadcaster, connection_pool), fields(file_index, file_name))]
+async fn process_with_gemini(
+    image_data: &[u8],
+    file_index: usize,
+    file_name: Option<String>,
+    broadcaster: broadcast::Sender<ProcessingEvent>,
+    connection_pool: &crate::config::ConnectionPool,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    info!("Starting Gemini processing for file {} (index: {})",
+          file_name.as_deref().unwrap_or("unknown"), file_index);
+
+    // Send Gemini processing start event
+    let _ = broadcaster.send(ProcessingEvent::GeminiProcessingStart {
+        file_index,
+        file_name: file_name.clone(),
+        timestamp: Utc::now(),
+    });
+
+    // Initialize Gemini service
+    debug!("Initializing Gemini service");
+    let gemini_service = GeminiService::with_default_config()
+        .map_err(|e| {
+            error!("Failed to initialize Gemini service: {}", e);
+            format!("Failed to initialize Gemini service: {}", e)
+        })?;
+
+    // Extract bill data from image
+    let gemini_response = match gemini_service.extract_bill_data(image_data).await {
+        Ok(response) => response,
+        Err(GeminiError::RateLimitExceeded { retry_after }) => {
+            let error_msg = format!("Gemini API rate limit exceeded. Retry after: {:?} seconds", retry_after);
+            let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
+                file_index,
+                error_message: error_msg.clone(),
+                timestamp: Utc::now(),
+            });
+            return Err(error_msg.into());
+        }
+        Err(GeminiError::AuthenticationFailed) => {
+            let error_msg = "Gemini API authentication failed. Please check your API key.";
+            let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
+                file_index,
+                error_message: error_msg.to_string(),
+                timestamp: Utc::now(),
+            });
+            return Err(error_msg.into());
+        }
+        Err(GeminiError::Timeout { seconds }) => {
+            let error_msg = format!("Gemini API request timeout after {} seconds", seconds);
+            let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
+                file_index,
+                error_message: error_msg.clone(),
+                timestamp: Utc::now(),
+            });
+            return Err(error_msg.into());
+        }
+        Err(GeminiError::ApiError { status, message }) => {
+            let error_msg = format!("Gemini API error {}: {}", status, message);
+            let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
+                file_index,
+                error_message: error_msg.clone(),
+                timestamp: Utc::now(),
+            });
+            return Err(error_msg.into());
+        }
+        Err(e) => {
+            let error_msg = format!("Gemini processing failed: {}", e);
+            let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
+                file_index,
+                error_message: error_msg.clone(),
+                timestamp: Utc::now(),
+            });
+            return Err(error_msg.into());
+        }
+    };
+
+    // Send Gemini processing success event
+    let _ = broadcaster.send(ProcessingEvent::GeminiProcessingSuccess {
+        file_index,
+        extracted_data: gemini_response.clone(),
+        timestamp: Utc::now(),
+    });
+
+    // Extract and validate bill data
+    debug!("Extracting and validating bill data from Gemini response");
+    let extractor = BillDataExtractor::new();
+    let bill_data = extractor
+        .extract_and_validate(&gemini_response)
+        .map_err(|e| {
+            error!("Data extraction error: {}", e);
+            format!("Data extraction error: {}", e)
+        })?;
+    debug!("Successfully extracted bill data: form_no={:?}, invoice_no={:?}",
+           bill_data.form_no, bill_data.invoice_no);
+
+    // Save to database using BillService
+    debug!("Saving extracted bill data to database");
+    let bill_service = BillService::new(connection_pool.pool().clone());
+    match bill_service.create_bill(bill_data).await {
+        Ok(bill) => {
+            info!("Successfully saved bill data to database with ID: {}", bill.id);
+            let _ = broadcaster.send(ProcessingEvent::BillDataSaved {
+                file_index,
+                bill_id: bill.id,
+                timestamp: Utc::now(),
+            });
+        }
+        Err(e) => {
+            // Don't fail the entire process if database save fails
+            // Just log the error and continue
+            error!("Failed to save bill data to database: {:?}", e);
+        }
+    }
+
+    Ok(())
 }
 
 fn map_error_to_code(error: &UploadError) -> ValidationErrorCode {

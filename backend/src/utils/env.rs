@@ -52,3 +52,19 @@ pub fn parse_env_optional_duration_with_fallback(
         .and_then(|s| s.parse::<u64>().ok())
         .map(Duration::from_secs)
 }
+
+/// Get required environment variable with error handling
+///
+/// Returns the environment variable value or panics with a descriptive error
+/// if the variable is not found or empty.
+pub fn get_required_env_var(name: &str) -> String {
+    std::env::var(name)
+        .unwrap_or_else(|_| panic!("Environment variable {} is required but not set", name))
+}
+
+/// Get Gemini API key from environment
+///
+/// Returns the GEMINI_API_KEY environment variable required for Gemini AI API calls.
+pub fn get_gemini_api_key() -> String {
+    get_required_env_var("GEMINI_API_KEY")
+}

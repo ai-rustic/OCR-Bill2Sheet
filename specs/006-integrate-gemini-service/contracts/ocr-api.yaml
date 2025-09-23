@@ -1,0 +1,273 @@
+openapi: 3.0.3
+info:
+  title: OCR Bill Processing API
+  description: API for processing bill images through Gemini AI with real-time streaming
+  version: 1.0.0
+
+paths:
+  /api/ocr:
+    post:
+      summary: Process bill images with Gemini AI
+      description: |
+        Upload multiple bill images for OCR processing. Each image is processed
+        sequentially through Gemini AI service, with real-time updates streamed
+        via Server-Sent Events.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Bill images (JPG, PNG, JFIF)
+                  minItems: 1
+                  maxItems: 10
+              required:
+                - files
+      responses:
+        '200':
+          description: SSE stream of processing updates
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-sent events with processing updates
+              examples:
+                started:
+                  value: |
+                    event: started
+                    data: {"type":"started","total_images":3,"batch_id":"batch_123"}
+
+                progress:
+                  value: |
+                    event: progress
+                    data: {"type":"progress","filename":"invoice1.jpg","status":"processing","current":1,"total":3}
+
+                completed:
+                  value: |
+                    event: completed
+                    data: {"type":"completed","filename":"invoice1.jpg","data":{"invoice_no":"INV-001","total_amount":"150000"}}
+
+                error:
+                  value: |
+                    event: error
+                    data: {"type":"error","filename":"invalid.jpg","error":"Unsupported format"}
+
+                rate_limited:
+                  value: |
+                    event: rate_limited
+                    data: {"type":"rate_limited","message":"Rate limit exceeded","retry_after":3600}
+
+                batch_complete:
+                  value: |
+                    event: batch_complete
+                    data: {"type":"batch_complete","total_processed":3,"successful":2,"failed":1}
+
+        '400':
+          description: Invalid request (no files, unsupported format, size exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                no_files:
+                  value:
+                    error: "No files provided"
+                    code: "MISSING_FILES"
+                unsupported_format:
+                  value:
+                    error: "Unsupported file format. Only JPG, PNG, JFIF allowed"
+                    code: "INVALID_FORMAT"
+                file_too_large:
+                  value:
+                    error: "File exceeds maximum size limit"
+                    code: "FILE_TOO_LARGE"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    SSEEvent:
+      oneOf:
+        - $ref: '#/components/schemas/StartedEvent'
+        - $ref: '#/components/schemas/ProgressEvent'
+        - $ref: '#/components/schemas/CompletedEvent'
+        - $ref: '#/components/schemas/ErrorEvent'
+        - $ref: '#/components/schemas/RateLimitedEvent'
+        - $ref: '#/components/schemas/BatchCompleteEvent'
+
+    StartedEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [started]
+        total_images:
+          type: integer
+          minimum: 1
+        batch_id:
+          type: string
+      required: [type, total_images, batch_id]
+
+    ProgressEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [progress]
+        filename:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        current:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 1
+      required: [type, filename, status, current, total]
+
+    CompletedEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [completed]
+        filename:
+          type: string
+        data:
+          $ref: '#/components/schemas/ExtractedBillData'
+      required: [type, filename, data]
+
+    ErrorEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [error]
+        filename:
+          type: string
+        error:
+          type: string
+      required: [type, filename, error]
+
+    RateLimitedEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [rate_limited]
+        message:
+          type: string
+        retry_after:
+          type: integer
+          minimum: 0
+          description: Seconds to wait before retry
+      required: [type, message]
+
+    BatchCompleteEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [batch_complete]
+        total_processed:
+          type: integer
+          minimum: 0
+        successful:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+      required: [type, total_processed, successful, failed]
+
+    ExtractedBillData:
+      type: object
+      description: Structured bill data extracted by Gemini AI
+      properties:
+        form_no:
+          type: string
+          nullable: true
+          example: "Mẫu 01-GTKT"
+        invoice_no:
+          type: string
+          nullable: true
+          example: "INV-2024-001"
+        invoice_series:
+          type: string
+          nullable: true
+          example: "AA/24E"
+        invoice_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-09-23"
+        seller_name:
+          type: string
+          nullable: true
+          example: "Công ty TNHH ABC"
+        seller_tax_code:
+          type: string
+          nullable: true
+          example: "0123456789"
+        seller_address:
+          type: string
+          nullable: true
+          example: "123 Đường ABC, Q1, TP.HCM"
+        buyer_name:
+          type: string
+          nullable: true
+          example: "Khách hàng XYZ"
+        buyer_tax_code:
+          type: string
+          nullable: true
+          example: "9876543210"
+        buyer_address:
+          type: string
+          nullable: true
+          example: "456 Đường DEF, Q3, TP.HCM"
+        total_amount:
+          type: string
+          nullable: true
+          example: "1500000.00"
+          description: "Decimal string for precise currency handling"
+        tax_rate:
+          type: string
+          nullable: true
+          example: "10.00"
+          description: "Percentage as decimal string"
+        tax_amount:
+          type: string
+          nullable: true
+          example: "150000.00"
+          description: "Decimal string for precise currency handling"
+        payment_method:
+          type: string
+          nullable: true
+          example: "Chuyển khoản"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+        details:
+          type: object
+          description: Additional error context
+      required: [error]

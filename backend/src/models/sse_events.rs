@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use crate::models::ImageFileInfo;
+use crate::models::{ImageFileInfo, GeminiResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -50,6 +50,26 @@ pub enum ProcessingEvent {
         session_id: String,
         error_message: String,
         error_type: ProcessingErrorType,
+        timestamp: DateTime<Utc>,
+    },
+    GeminiProcessingStart {
+        file_index: usize,
+        file_name: Option<String>,
+        timestamp: DateTime<Utc>,
+    },
+    GeminiProcessingSuccess {
+        file_index: usize,
+        extracted_data: GeminiResponse,
+        timestamp: DateTime<Utc>,
+    },
+    GeminiProcessingError {
+        file_index: usize,
+        error_message: String,
+        timestamp: DateTime<Utc>,
+    },
+    BillDataSaved {
+        file_index: usize,
+        bill_id: i32,
         timestamp: DateTime<Utc>,
     },
 }

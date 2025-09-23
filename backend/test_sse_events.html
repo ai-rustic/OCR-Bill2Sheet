@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Events Test - Gemini OCR Pipeline</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        .events-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .event {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .event-upload_started { background-color: #e3f2fd; }
+        .event-image_received { background-color: #f3e5f5; }
+        .event-image_validation_start { background-color: #fff3e0; }
+        .event-image_validation_success { background-color: #e8f5e8; }
+        .event-image_validation_error { background-color: #ffebee; }
+        .event-gemini_processing_start { background-color: #e1f5fe; }
+        .event-gemini_processing_success { background-color: #e8f5e8; }
+        .event-gemini_processing_error { background-color: #ffebee; }
+        .event-bill_data_saved { background-color: #f1f8e9; }
+        .event-all_images_validated { background-color: #fce4ec; }
+        .event-processing_complete { background-color: #e8f5e8; }
+        .event-processing_error { background-color: #ffcdd2; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 SSE Events Test - Gemini OCR Pipeline</h1>
+        <p><strong>T017:</strong> Test SSE events for Gemini processing pipeline</p>
+
+        <div class="controls">
+            <button onclick="clearEvents()">Clear Events</button>
+            <button onclick="testConnection()">Test Connection</button>
+            <button id="pauseBtn" onclick="togglePause()">Pause</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalEvents">0</div>
+                <div>Total Events</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="imagesProcessed">0</div>
+                <div>Images Processed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="successfulOcr">0</div>
+                <div>Successful OCR</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="errors">0</div>
+                <div>Errors</div>
+            </div>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <p>📁 Drop Vietnamese invoice images here or click to select</p>
+            <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+        </div>
+
+        <h3>📊 Event Stream Monitor</h3>
+        <div class="events-container" id="eventsContainer">
+            <div class="event">Waiting for events... Upload images to see SSE events in real-time.</div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let isPaused = false;
+        let stats = {
+            totalEvents: 0,
+            imagesProcessed: 0,
+            successfulOcr: 0,
+            errors: 0
+        };
+
+        // Setup file upload
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            uploadFiles(files);
+        });
+        fileInput.addEventListener('change', (e) => {
+            uploadFiles(e.target.files);
+        });
+
+        function uploadFiles(files) {
+            if (files.length === 0) return;
+
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('images', file);
+            }
+
+            // Clear previous events
+            clearEvents();
+
+            // Start SSE connection
+            startEventStream();
+
+            // Upload files
+            fetch('/api/ocr', {
+                method: 'POST',
+                body: formData
+            })
+            .catch(error => {
+                addEvent('error', { message: `Upload failed: ${error.message}` });
+            });
+        }
+
+        function startEventStream() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource('/api/ocr');
+
+            eventSource.addEventListener('upload_started', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('upload_started', data);
+                stats.imagesProcessed = data.total_files;
+                updateStats();
+            });
+
+            eventSource.addEventListener('image_received', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('image_received', data);
+            });
+
+            eventSource.addEventListener('image_validation_start', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('image_validation_start', data);
+            });
+
+            eventSource.addEventListener('image_validation_success', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('image_validation_success', data);
+            });
+
+            eventSource.addEventListener('image_validation_error', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('image_validation_error', data);
+                stats.errors++;
+                updateStats();
+            });
+
+            eventSource.addEventListener('gemini_processing_start', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('gemini_processing_start', data);
+            });
+
+            eventSource.addEventListener('gemini_processing_success', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('gemini_processing_success', data);
+                stats.successfulOcr++;
+                updateStats();
+            });
+
+            eventSource.addEventListener('gemini_processing_error', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('gemini_processing_error', data);
+                stats.errors++;
+                updateStats();
+            });
+
+            eventSource.addEventListener('bill_data_saved', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('bill_data_saved', data);
+            });
+
+            eventSource.addEventListener('all_images_validated', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('all_images_validated', data);
+            });
+
+            eventSource.addEventListener('processing_complete', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('processing_complete', data);
+                eventSource.close();
+            });
+
+            eventSource.addEventListener('processing_error', (e) => {
+                const data = JSON.parse(e.data);
+                addEvent('processing_error', data);
+                stats.errors++;
+                updateStats();
+                eventSource.close();
+            });
+
+            eventSource.onerror = (error) => {
+                addEvent('connection_error', { message: 'SSE connection error' });
+            };
+        }
+
+        function addEvent(type, data) {
+            if (isPaused) return;
+
+            stats.totalEvents++;
+            updateStats();
+
+            const container = document.getElementById('eventsContainer');
+            const eventDiv = document.createElement('div');
+            eventDiv.className = `event event-${type}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            const eventData = JSON.stringify(data, null, 2);
+
+            eventDiv.innerHTML = `
+                <div><strong>${type.toUpperCase()}</strong> <span class="timestamp">${timestamp}</span></div>
+                <pre>${eventData}</pre>
+            `;
+
+            container.appendChild(eventDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('totalEvents').textContent = stats.totalEvents;
+            document.getElementById('imagesProcessed').textContent = stats.imagesProcessed;
+            document.getElementById('successfulOcr').textContent = stats.successfulOcr;
+            document.getElementById('errors').textContent = stats.errors;
+        }
+
+        function clearEvents() {
+            document.getElementById('eventsContainer').innerHTML = '';
+            stats = { totalEvents: 0, imagesProcessed: 0, successfulOcr: 0, errors: 0 };
+            updateStats();
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? 'Resume' : 'Pause';
+        }
+
+        function testConnection() {
+            fetch('/health')
+                .then(response => {
+                    if (response.ok) {
+                        addEvent('connection_test', { status: 'Server is running', timestamp: new Date().toISOString() });
+                    } else {
+                        addEvent('connection_test', { status: 'Server responded with error', code: response.status });
+                    }
+                })
+                .catch(error => {
+                    addEvent('connection_test', { status: 'Connection failed', error: error.message });
+                });
+        }
+
+        // Test checklist for T017
+        window.addEventListener('load', () => {
+            console.log('🧪 SSE Events Test Checklist for T017:');
+            console.log('✅ 1. Upload Vietnamese invoice images');
+            console.log('✅ 2. Verify all SSE events fire in correct order:');
+            console.log('   - upload_started');
+            console.log('   - image_received');
+            console.log('   - image_validation_start');
+            console.log('   - image_validation_success');
+            console.log('   - gemini_processing_start');
+            console.log('   - gemini_processing_success');
+            console.log('   - bill_data_saved');
+            console.log('   - all_images_validated');
+            console.log('   - processing_complete');
+            console.log('✅ 3. Test error scenarios (invalid images, large files)');
+            console.log('✅ 4. Verify event data contains expected fields');
+            console.log('✅ 5. Monitor real-time updates and timing');
+            console.log('💡 Expected event flow: Start → Received → Validation → Gemini → Save → Complete');
+        });
+    </script>
+</body>
+</html>
