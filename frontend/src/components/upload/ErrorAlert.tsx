@@ -121,7 +121,7 @@ export function ToastErrorAlert({
   dismissAfter?: number
   className?: string
 }) {
-  const timeoutRef = React.useRef<NodeJS.Timeout>()
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
   React.useEffect(() => {
     if (isVisible && autoDismiss && dismissAfter > 0) {

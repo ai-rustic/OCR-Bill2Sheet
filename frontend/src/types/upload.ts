@@ -135,6 +135,8 @@ export interface UseUploadReturn {
   retryUpload: (id: string) => void;
   /** Clear all errors */
   clearErrors: () => void;
+  /** Set errors */
+  setErrors: (errors: string[]) => void;
   /** Clear all completed uploads */
   clearCompleted: () => void;
   /** Set drag active state */

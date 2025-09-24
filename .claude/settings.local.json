@@ -10,7 +10,10 @@
       "Bash(curl:*)",
       "Bash(rustc:*)",
       "mcp__shadcn__getComponents",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run typecheck:*)",
+      "mcp__shadcn__getComponent"
     ],
     "deny": [],
     "ask": []

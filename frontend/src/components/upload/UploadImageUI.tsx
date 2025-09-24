@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils"
 import type { AcceptedFileTypes, UploadedImage } from "@/types/upload"
 import { DEFAULT_ACCEPTED_TYPES } from "@/types/upload"
 import { useUpload } from "@/hooks/useUpload"
+import { useOcrProcessing } from "@/hooks/useOcrProcessing"
 import { useGlobalDragPrevention } from "@/hooks/useDragAndDrop"
 import { UploadArea } from "./UploadArea"
 import { FileList } from "./FileList"
 import { ErrorAlert } from "./ErrorAlert"
+import { ProcessingStatus } from "./ProcessingStatus"
 import { UploadErrorBoundary, useUploadErrorHandler, useNetworkErrorHandler } from "./ErrorBoundary"
 import { useResponsive, ResponsiveLayout, ResponsiveGrid, DEFAULT_RESPONSIVE_CONFIG } from "./ResponsiveUtils"
 import { formatUploadStats } from "@/utils/fileFormatting"
@@ -87,6 +89,7 @@ export function UploadImageUI({
   ...props
 }: UploadImageUIProps) {
   const upload = useUpload(acceptedTypes)
+  const ocr = useOcrProcessing()
   const [layout, setLayout] = React.useState(initialLayout)
   const { enablePrevention, disablePrevention } = useGlobalDragPrevention()
 
@@ -136,7 +139,7 @@ export function UploadImageUI({
       if (!isOnline && enhancedErrorHandling) {
         const error = 'Cannot upload files while offline. Please check your internet connection.'
         errorHandler.addError(error)
-        onUploadError?([error])
+        onUploadError?.([error])
         return
       }
 
@@ -332,6 +335,19 @@ export function UploadImageUI({
                 "pt-2 border-t",
                 responsive && isMobile ? "flex flex-col space-y-2" : "flex items-center space-x-2"
               )}>
+                {/* Process Images Button */}
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const files = upload.images.map(img => img.file)
+                    ocr.processImages(files)
+                  }}
+                  disabled={ocr.isProcessing || upload.images.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {ocr.isProcessing ? 'Processing...' : 'Process Images'}
+                </Button>
+
                 {upload.stats.errors > 0 && (
                   <Button
                     size="sm"
@@ -427,6 +443,14 @@ export function UploadImageUI({
           />
         </CardContent>
       </Card>
+
+      {/* OCR Processing Status */}
+      {(ocr.events.length > 0 || ocr.isProcessing) && (
+        <ProcessingStatus
+          events={ocr.events}
+          isProcessing={ocr.isProcessing}
+        />
+      )}
 
       {/* File list */}
       {showFileList && upload.images.length > 0 && (

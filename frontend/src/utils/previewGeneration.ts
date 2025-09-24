@@ -70,54 +70,50 @@ export function generateThumbnail(
       return;
     }
 
-    img.onload = () => {
-      // Set canvas dimensions
-      canvas.width = width;
-      canvas.height = height;
-
-      // Calculate scaling to maintain aspect ratio
-      const aspectRatio = img.width / img.height;
-      let drawWidth = width;
-      let drawHeight = height;
-      let offsetX = 0;
-      let offsetY = 0;
-
-      if (aspectRatio > width / height) {
-        // Image is wider than target
-        drawHeight = width / aspectRatio;
-        offsetY = (height - drawHeight) / 2;
-      } else {
-        // Image is taller than target
-        drawWidth = height * aspectRatio;
-        offsetX = (width - drawWidth) / 2;
-      }
-
-      // Clear canvas and draw image
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-      // Convert to data URL
-      const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      resolve(thumbnailDataUrl);
-    };
-
-    img.onerror = () => {
-      reject(new Error('Failed to load image'));
-    };
-
     // Create object URL for the image
     const objectUrl = URL.createObjectURL(file);
     img.src = objectUrl;
 
-    // Cleanup object URL after image loads or fails
     img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      img.onload(); // Call the original onload
+      try {
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
+
+        // Calculate scaling to maintain aspect ratio
+        const aspectRatio = img.width / img.height;
+        let drawWidth = width;
+        let drawHeight = height;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (aspectRatio > width / height) {
+          // Image is wider than target
+          drawHeight = width / aspectRatio;
+          offsetY = (height - drawHeight) / 2;
+        } else {
+          // Image is taller than target
+          drawWidth = height * aspectRatio;
+          offsetX = (width - drawWidth) / 2;
+        }
+
+        // Clear canvas and draw image
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+        // Convert to data URL
+        const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        URL.revokeObjectURL(objectUrl);
+        resolve(thumbnailDataUrl);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
     };
 
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      img.onerror(); // Call the original onerror
+      reject(new Error('Failed to load image'));
     };
   });
 }

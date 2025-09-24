@@ -153,7 +153,7 @@ export function simulateRealisticUpload(
   };
 
   const speed = speedConfig[networkSpeed];
-  const reliability = reliabilityConfig[reliability];
+  const reliabilitySettings = reliabilityConfig[reliability];
 
   let cancelled = false;
   let timeoutId: NodeJS.Timeout;
@@ -163,14 +163,14 @@ export function simulateRealisticUpload(
     if (cancelled) return;
 
     // Simulate network stuttering
-    if (Math.random() < reliability.stutterRate) {
+    if (Math.random() < reliabilitySettings.stutterRate) {
       // Stutter: pause for a moment
       timeoutId = setTimeout(updateProgress, speed.baseDelay * 2);
       return;
     }
 
     // Check for failure
-    if (Math.random() < reliability.failureRate && currentProgress > 10) {
+    if (Math.random() < reliabilitySettings.failureRate && currentProgress > 10) {
       onError('Network error occurred during upload');
       return;
     }

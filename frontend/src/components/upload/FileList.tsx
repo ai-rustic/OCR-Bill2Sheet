@@ -4,7 +4,7 @@ import * as React from "react"
 import { Grid, List, Trash2, RotateCcw, CheckCircle, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { FileListProps, UploadStatus } from "@/types/upload"
+import { FileListProps, UploadStatus } from "@/types/upload"
 import { ImagePreview, ListImagePreview } from "./ImagePreview"
 import { formatUploadStats } from "@/utils/fileFormatting"
 

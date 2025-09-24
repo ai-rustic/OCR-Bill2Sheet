@@ -5,7 +5,7 @@ import { Trash2, RotateCcw, Eye, Download, X } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { ImagePreviewProps, UploadStatus } from "@/types/upload"
+import { ImagePreviewProps, UploadStatus } from "@/types/upload"
 import { ProgressIndicator, CompactProgressIndicator } from "./ProgressIndicator"
 import { formatFileSize, formatRelativeTime, getFileTypeDisplayName } from "@/utils/fileFormatting"
 

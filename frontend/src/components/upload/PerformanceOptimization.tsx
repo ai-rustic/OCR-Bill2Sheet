@@ -33,7 +33,7 @@ export function useThrottle<T extends (...args: any[]) => void>(
   delay: number
 ): T {
   const lastCall = React.useRef<number>(0)
-  const timeoutRef = React.useRef<NodeJS.Timeout>()
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
   return React.useCallback(
     ((...args: Parameters<T>) => {
@@ -43,7 +43,9 @@ export function useThrottle<T extends (...args: any[]) => void>(
         lastCall.current = now
         callback(...args)
       } else {
-        clearTimeout(timeoutRef.current)
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+        }
         timeoutRef.current = setTimeout(() => {
           lastCall.current = Date.now()
           callback(...args)
@@ -170,11 +172,12 @@ export function useOptimizedFileReader() {
  * Intersection observer hook for lazy loading
  */
 export function useIntersectionObserver(
-  options: IntersectionObserverInit = {}
+  options: IntersectionObserverInit & { triggerOnce?: boolean } = {}
 ) {
   const [isIntersecting, setIsIntersecting] = React.useState(false)
   const [entry, setEntry] = React.useState<IntersectionObserverEntry | null>(null)
-  const elementRef = React.useRef<HTMLElement>(null)
+  const elementRef = React.useRef<HTMLDivElement>(null)
+  const { triggerOnce, ...observerOptions } = options
 
   React.useEffect(() => {
     const element = elementRef.current
@@ -184,8 +187,12 @@ export function useIntersectionObserver(
       ([entry]) => {
         setIsIntersecting(entry.isIntersecting)
         setEntry(entry)
+
+        if (triggerOnce && entry.isIntersecting) {
+          observer.disconnect()
+        }
       },
-      options
+      observerOptions
     )
 
     observer.observe(element)
@@ -193,7 +200,7 @@ export function useIntersectionObserver(
     return () => {
       observer.disconnect()
     }
-  }, [options])
+  }, [observerOptions, triggerOnce])
 
   return { ref: elementRef, isIntersecting, entry }
 }

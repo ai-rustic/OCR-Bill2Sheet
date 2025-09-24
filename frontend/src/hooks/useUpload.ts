@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type {
+import {
   UploadedImage,
   UploadStatus,
   AcceptedFileTypes,
@@ -193,6 +193,10 @@ export function useUpload(acceptedTypes: AcceptedFileTypes = DEFAULT_ACCEPTED_TY
     setErrors([]);
   }, []);
 
+  const setErrorsCallback = useCallback((newErrors: string[]) => {
+    setErrors(newErrors);
+  }, []);
+
   /**
    * Clear all completed uploads
    */
@@ -240,6 +244,7 @@ export function useUpload(acceptedTypes: AcceptedFileTypes = DEFAULT_ACCEPTED_TY
     removeImage,
     retryUpload,
     clearErrors,
+    setErrors: setErrorsCallback,
     clearCompleted,
     setDragActive,
     stats

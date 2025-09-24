@@ -4,7 +4,7 @@ import * as React from "react"
 import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import type { ProgressIndicatorProps, UploadStatus } from "@/types/upload"
+import { ProgressIndicatorProps, UploadStatus } from "@/types/upload"
 import { formatProgress } from "@/utils/fileFormatting"
 import { useUploadTheme, themeUtils } from "./UploadTheme"
 

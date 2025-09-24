@@ -5,6 +5,10 @@
  * This provides a clean API for consuming the upload image feature
  */
 
+import * as React from 'react'
+import { useUpload } from '@/hooks/useUpload'
+import type { UploadedImage } from '@/types/upload'
+
 // Main container components
 export { default as UploadImageUI, SimpleUploadImageUI, CompactUploadImageUI } from './UploadImageUI'
 export type { UploadImageUIProps } from './UploadImageUI'
@@ -105,9 +109,9 @@ export function useQuickUpload(options?: {
 
   // Monitor for completion
   React.useEffect(() => {
-    const completed = upload.images.filter(img => img.status === 'completed')
+    const completed = upload.images.filter((img: UploadedImage) => img.status === 'completed')
     if (completed.length > 0 && options?.onComplete) {
-      options.onComplete(completed.map(img => img.file))
+      options.onComplete(completed.map((img: UploadedImage) => img.file))
     }
   }, [upload.images, options])
 

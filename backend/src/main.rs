@@ -12,20 +12,18 @@ use axum::{
     routing::{get, post},
     Router,
 };
-// use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::cors::{CorsLayer, Any};
 use tracing::{info, error, warn};
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
 
-use config::{ConnectionPool, DatabaseConfig, UploadConfig};
-use models::ProcessingEvent;
+use config::{ConnectionPool, DatabaseConfig, UploadConfig, ServerConfig};
 use state::AppState;
 use api::{
     get_health, get_health_detail, error_handling_middleware, timeout_middleware, not_found_handler,
     get_all_bills, get_bill_by_id, create_bill, update_bill, delete_bill, search_bills, get_bills_count,
-    upload_images, upload_images_sse
+    upload_images_sse
 };
 
 
@@ -46,6 +44,18 @@ async fn main() {
     }
 
     info!("Database connection and validation completed successfully");
+
+    // Initialize server configuration
+    let server_config = match ServerConfig::from_env() {
+        Ok(config) => {
+            info!("Server configuration loaded: {}", config.display_config());
+            config
+        }
+        Err(e) => {
+            error!("Failed to load server configuration: {}", e);
+            std::process::exit(1);
+        }
+    };
 
     // Initialize upload configuration
     let upload_config = match UploadConfig::from_env() {
@@ -85,13 +95,19 @@ async fn main() {
         .route("/api/ocr", post(upload_images_sse))
         .fallback(not_found_handler)
         .layer(DefaultBodyLimit::max(50 * 1024 * 1024)) // 50MB total request limit
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
+        )
         .layer(middleware::from_fn(request_logging_middleware))
         .layer(middleware::from_fn(error_handling_middleware))
         .layer(middleware::from_fn(timeout_middleware))
         .with_state(app_state);
 
-    // Set up the server address
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    // Set up the server address from configuration
+    let addr = server_config.socket_addr();
     info!("Starting server on {}", addr);
 
     // Create the TCP listener
