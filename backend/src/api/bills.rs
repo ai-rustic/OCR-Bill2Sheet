@@ -21,19 +21,42 @@ use crate::{
 
 /// GET /api/bills endpoint handler
 ///
-/// Returns all bills from the database in a paginated format.
-/// Uses the BillService to fetch all bills and wraps the response
+/// Returns bills from the database with pagination support.
+/// Uses the BillService to fetch bills and wraps the response
 /// in the standard ApiResponse format.
+///
+/// # Query Parameters
+/// - `page`: Page number (starts from 1, default: 1)
+/// - `limit`: Number of items per page (default: 10, max: 100)
 ///
 /// # Returns
 /// - 200 OK with list of bills on success
+/// - 400 Bad Request on invalid pagination parameters
 /// - 500 Internal Server Error on database error
-pub async fn get_all_bills(State(pool): State<ConnectionPool>) -> impl IntoResponse {
+pub async fn get_all_bills(
+    State(pool): State<ConnectionPool>,
+    Query(params): Query<PaginationParams>,
+) -> impl IntoResponse {
+    // Extract and validate pagination parameters
+    let page = params.page.unwrap_or(1);
+    let limit = params.limit.unwrap_or(10);
+
+    // Validate pagination parameters
+    if page < 1 {
+        let response: ApiResponse<Vec<Bill>> = ApiResponse::error("Page number must be >= 1".to_string());
+        return (StatusCode::BAD_REQUEST, Json(response)).into_response();
+    }
+
+    if limit < 1 || limit > 100 {
+        let response: ApiResponse<Vec<Bill>> = ApiResponse::error("Limit must be between 1 and 100".to_string());
+        return (StatusCode::BAD_REQUEST, Json(response)).into_response();
+    }
+
     // Create bill service with the connection pool
     let bill_service = BillService::new(pool.pool().clone());
 
-    // Fetch all bills from the database
-    match bill_service.get_all_bills().await {
+    // Fetch bills with pagination
+    match bill_service.get_bills_paginated(page, limit).await {
         Ok(bills) => {
             let response = ApiResponse::success(bills);
             (StatusCode::OK, Json(response)).into_response()
@@ -250,6 +273,16 @@ pub struct SearchParams {
     /// Alternative parameter name for query
     #[serde(rename = "invoice")]
     pub invoice: Option<String>,
+}
+
+/// Pagination query parameters for bill endpoints
+#[derive(Debug, Deserialize)]
+pub struct PaginationParams {
+    /// Page number (starts from 1)
+    pub page: Option<i64>,
+
+    /// Number of items per page (default: 10, max: 100)
+    pub limit: Option<i64>,
 }
 
 /// GET /api/bills/search endpoint handler

@@ -172,4 +172,33 @@ impl BillService {
 
         Ok(count.count.unwrap_or(0))
     }
+
+    /// Get bills with pagination
+    /// Uses LIMIT and OFFSET for efficient pagination
+    pub async fn get_bills_paginated(
+        &self,
+        page: i64,
+        limit: i64
+    ) -> Result<Vec<Bill>, ApiError> {
+        let offset = (page - 1) * limit;
+
+        let bills = sqlx::query_as!(
+            Bill,
+            r#"
+            SELECT id, form_no, serial_no, invoice_no, issued_date,
+                   seller_name, seller_tax_code, item_name, unit,
+                   quantity, unit_price, total_amount, vat_rate, vat_amount
+            FROM bills
+            ORDER BY id ASC
+            LIMIT $1 OFFSET $2
+            "#,
+            limit,
+            offset
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
+
+        Ok(bills)
+    }
 }
