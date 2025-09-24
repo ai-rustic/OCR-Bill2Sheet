@@ -1,8 +1,8 @@
+use crate::config::database::DatabaseConfig;
+use crate::utils::database::{PoolInfo, test_database_connectivity};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use crate::config::database::DatabaseConfig;
-use crate::utils::database::{test_database_connectivity, PoolInfo};
 
 /// Database connectivity health check response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,13 +51,17 @@ impl HealthStatus {
     /// Create a status from database accessibility
     pub fn from_database_check(database_accessible: bool, pool_size: u32) -> Self {
         Self {
-            status: if database_accessible { "healthy" } else { "unhealthy" }.to_string(),
+            status: if database_accessible {
+                "healthy"
+            } else {
+                "unhealthy"
+            }
+            .to_string(),
             database_accessible,
             pool_size,
             timestamp: Utc::now(),
         }
     }
-
 
     /// Check if the health status is healthy
     pub fn is_healthy(&self) -> bool {
@@ -75,7 +79,12 @@ impl DetailedHealthStatus {
         config: &DatabaseConfig,
     ) -> Self {
         Self {
-            status: if database_accessible { "healthy" } else { "unhealthy" }.to_string(),
+            status: if database_accessible {
+                "healthy"
+            } else {
+                "unhealthy"
+            }
+            .to_string(),
             database_accessible,
             pool_size,
             timestamp: Utc::now(),
@@ -88,7 +97,6 @@ impl DetailedHealthStatus {
             },
         }
     }
-
 }
 
 /// Health check service implementation
@@ -110,7 +118,6 @@ impl HealthService {
         HealthStatus::from_database_check(database_accessible, pool_size)
     }
 
-
     /// Perform a detailed health check with graceful error handling
     pub async fn check_detailed_health_safe(&self) -> DetailedHealthStatus {
         let pool_size = self.pool.get_pool_size();
@@ -127,6 +134,4 @@ impl HealthService {
             &self.config,
         )
     }
-
 }
-

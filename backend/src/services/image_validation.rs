@@ -1,5 +1,5 @@
 use crate::errors::UploadError;
-use tracing::{debug, warn, error};
+use tracing::{debug, error, warn};
 
 pub async fn validate_image_format(data: &[u8]) -> Result<String, UploadError> {
     debug!("Starting image format validation for {} bytes", data.len());
@@ -20,18 +20,27 @@ pub async fn validate_image_format(data: &[u8]) -> Result<String, UploadError> {
     // Image parsing validation
     match image::load_from_memory(data) {
         Ok(img) => {
-            debug!("Image successfully parsed: {}x{} pixels", img.width(), img.height());
+            debug!(
+                "Image successfully parsed: {}x{} pixels",
+                img.width(),
+                img.height()
+            );
             Ok(kind.mime_type().to_string())
         }
         Err(e) => {
             error!("Image parsing failed: {}", e);
-            Err(UploadError::InvalidImageFormat("Corrupted image".to_string()))
+            Err(UploadError::InvalidImageFormat(
+                "Corrupted image".to_string(),
+            ))
         }
     }
 }
 
 pub fn validate_file_size(size: usize, limit: usize) -> Result<(), UploadError> {
-    debug!("Validating file size: {} bytes (limit: {} bytes)", size, limit);
+    debug!(
+        "Validating file size: {} bytes (limit: {} bytes)",
+        size, limit
+    );
 
     if size > limit {
         warn!("File size {} exceeds limit {}", size, limit);

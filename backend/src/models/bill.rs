@@ -1,6 +1,6 @@
-use sqlx::FromRow;
-use serde::{Deserialize, Serialize};
 use chrono::NaiveDate;
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Bill {
@@ -36,4 +36,3 @@ pub struct CreateBill {
     pub vat_rate: Option<rust_decimal::Decimal>,
     pub vat_amount: Option<rust_decimal::Decimal>,
 }
-

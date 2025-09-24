@@ -1,4 +1,4 @@
-use axum::{response::IntoResponse, http::StatusCode};
+use axum::{http::StatusCode, response::IntoResponse};
 use serde_json::json;
 
 #[derive(Debug, thiserror::Error)]
@@ -28,15 +28,14 @@ impl IntoResponse for UploadError {
             UploadError::InvalidImageFormat(_) => {
                 (StatusCode::UNSUPPORTED_MEDIA_TYPE, self.to_string())
             }
-            UploadError::MultipartError(_) => {
-                (StatusCode::BAD_REQUEST, self.to_string())
-            }
+            UploadError::MultipartError(_) => (StatusCode::BAD_REQUEST, self.to_string()),
         };
 
         axum::Json(json!({
             "success": false,
             "error": message,
             "status": status.as_u16()
-        })).into_response()
+        }))
+        .into_response()
     }
 }

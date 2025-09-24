@@ -27,10 +27,7 @@ impl GeminiRequest {
     /// # Returns
     /// A new GeminiRequest instance
     pub fn new(image_data: String, prompt: String) -> Self {
-        Self {
-            image_data,
-            prompt,
-        }
+        Self { image_data, prompt }
     }
 
     /// Create a default prompt for Vietnamese bill extraction
@@ -58,7 +55,8 @@ Return ONLY a JSON object with these exact fields (use null for missing values):
   "payment_method": "Payment method (Hình thức thanh toán)"
 }
 
-Extract text exactly as shown in the image. Use null for any field not clearly visible."#.to_string()
+Extract text exactly as shown in the image. Use null for any field not clearly visible."#
+            .to_string()
     }
 
     /// Create a GeminiRequest for bill extraction with default prompt

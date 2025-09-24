@@ -1,4 +1,4 @@
-use axum::{response::IntoResponse, http::StatusCode};
+use axum::{http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt;
@@ -261,8 +261,14 @@ impl ProcessingError {
     /// Gets the retry delay for rate limit errors
     pub fn retry_after_seconds(&self) -> Option<u64> {
         match self {
-            Self::Api { retry_after_seconds, .. } => *retry_after_seconds,
-            Self::RateLimit { retry_after_seconds, .. } => Some(*retry_after_seconds),
+            Self::Api {
+                retry_after_seconds,
+                ..
+            } => *retry_after_seconds,
+            Self::RateLimit {
+                retry_after_seconds,
+                ..
+            } => Some(*retry_after_seconds),
             _ => None,
         }
     }
@@ -272,40 +278,48 @@ impl ProcessingError {
         let mut details = serde_json::Map::new();
 
         match self {
-            Self::Configuration { .. } => {},
+            Self::Configuration { .. } => {}
             Self::Validation { field, .. } => {
                 if let Some(field) = field {
                     details.insert("field".to_string(), json!(field));
                 }
-            },
+            }
             Self::Api { status_code, .. } => {
                 if let Some(status_code) = status_code {
                     details.insert("status_code".to_string(), json!(status_code));
                 }
-            },
-            Self::Network { .. } => {},
-            Self::Timeout { timeout_seconds, .. } => {
+            }
+            Self::Network { .. } => {}
+            Self::Timeout {
+                timeout_seconds, ..
+            } => {
                 details.insert("timeout_seconds".to_string(), json!(timeout_seconds));
-            },
+            }
             Self::Parse { response_body, .. } => {
                 if let Some(body) = response_body {
                     details.insert("response_body".to_string(), json!(body));
                 }
-            },
-            Self::RateLimit { quota_remaining, .. } => {
+            }
+            Self::RateLimit {
+                quota_remaining, ..
+            } => {
                 if let Some(quota) = quota_remaining {
                     details.insert("quota_remaining".to_string(), json!(quota));
                 }
-            },
-            Self::ServiceUnavailable { service_status, estimated_recovery_time, .. } => {
+            }
+            Self::ServiceUnavailable {
+                service_status,
+                estimated_recovery_time,
+                ..
+            } => {
                 if let Some(status) = service_status {
                     details.insert("service_status".to_string(), json!(status));
                 }
                 if let Some(recovery_time) = estimated_recovery_time {
                     details.insert("estimated_recovery_time".to_string(), json!(recovery_time));
                 }
-            },
-            Self::Internal { .. } => {},
+            }
+            Self::Internal { .. } => {}
         }
 
         ProcessingErrorResponse {
@@ -313,7 +327,11 @@ impl ProcessingError {
             message: self.to_string(),
             image_index: self.image_index(),
             retry_after_seconds: self.retry_after_seconds(),
-            details: if details.is_empty() { None } else { Some(json!(details)) },
+            details: if details.is_empty() {
+                None
+            } else {
+                Some(json!(details))
+            },
         }
     }
 }
@@ -324,24 +342,16 @@ impl IntoResponse for ProcessingError {
             ProcessingError::Configuration { .. } => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_response())
             }
-            ProcessingError::Validation { .. } => {
-                (StatusCode::BAD_REQUEST, self.to_response())
-            }
+            ProcessingError::Validation { .. } => (StatusCode::BAD_REQUEST, self.to_response()),
             ProcessingError::Api { status_code, .. } => {
                 let status = status_code
                     .and_then(|code| StatusCode::from_u16(code).ok())
                     .unwrap_or(StatusCode::BAD_GATEWAY);
                 (status, self.to_response())
             }
-            ProcessingError::Network { .. } => {
-                (StatusCode::BAD_GATEWAY, self.to_response())
-            }
-            ProcessingError::Timeout { .. } => {
-                (StatusCode::REQUEST_TIMEOUT, self.to_response())
-            }
-            ProcessingError::Parse { .. } => {
-                (StatusCode::BAD_GATEWAY, self.to_response())
-            }
+            ProcessingError::Network { .. } => (StatusCode::BAD_GATEWAY, self.to_response()),
+            ProcessingError::Timeout { .. } => (StatusCode::REQUEST_TIMEOUT, self.to_response()),
+            ProcessingError::Parse { .. } => (StatusCode::BAD_GATEWAY, self.to_response()),
             ProcessingError::RateLimit { .. } => {
                 (StatusCode::TOO_MANY_REQUESTS, self.to_response())
             }
@@ -357,12 +367,15 @@ impl IntoResponse for ProcessingError {
             "success": false,
             "error": response,
             "status": status.as_u16()
-        })).into_response();
+        }))
+        .into_response();
 
         // Add retry-after header for rate limit and service unavailable errors
         if let Some(retry_after) = self.retry_after_seconds() {
             if let Ok(header_value) = retry_after.to_string().parse() {
-                json_response.headers_mut().insert("retry-after", header_value);
+                json_response
+                    .headers_mut()
+                    .insert("retry-after", header_value);
             }
         }
 
@@ -380,16 +393,9 @@ impl From<reqwest::Error> for ProcessingError {
                 None,
             )
         } else if error.is_connect() {
-            Self::network(
-                format!("Connection error: {}", error),
-                None,
-            )
+            Self::network(format!("Connection error: {}", error), None)
         } else if error.is_request() {
-            Self::validation(
-                format!("Invalid request: {}", error),
-                None,
-                None,
-            )
+            Self::validation(format!("Invalid request: {}", error), None, None)
         } else {
             Self::api(
                 format!("HTTP error: {}", error),
@@ -403,31 +409,19 @@ impl From<reqwest::Error> for ProcessingError {
 
 impl From<serde_json::Error> for ProcessingError {
     fn from(error: serde_json::Error) -> Self {
-        Self::parse(
-            format!("JSON parsing error: {}", error),
-            None,
-            None,
-        )
+        Self::parse(format!("JSON parsing error: {}", error), None, None)
     }
 }
 
 impl From<chrono::ParseError> for ProcessingError {
     fn from(error: chrono::ParseError) -> Self {
-        Self::parse(
-            format!("Date parsing error: {}", error),
-            None,
-            None,
-        )
+        Self::parse(format!("Date parsing error: {}", error), None, None)
     }
 }
 
 impl From<rust_decimal::Error> for ProcessingError {
     fn from(error: rust_decimal::Error) -> Self {
-        Self::parse(
-            format!("Decimal parsing error: {}", error),
-            None,
-            None,
-        )
+        Self::parse(format!("Decimal parsing error: {}", error), None, None)
     }
 }
 
@@ -473,12 +467,7 @@ mod tests {
 
     #[test]
     fn test_api_error_creation() {
-        let error = ProcessingError::api(
-            "Gemini API error",
-            Some(429),
-            Some(60),
-            Some(1),
-        );
+        let error = ProcessingError::api("Gemini API error", Some(429), Some(60), Some(1));
         assert!(matches!(error, ProcessingError::Api { .. }));
         assert_eq!(error.error_type(), ErrorType::ApiError);
         assert_eq!(error.image_index(), Some(1));
@@ -487,11 +476,7 @@ mod tests {
 
     #[test]
     fn test_rate_limit_error_creation() {
-        let error = ProcessingError::rate_limit(
-            "Rate limit exceeded",
-            120,
-            Some(1000),
-        );
+        let error = ProcessingError::rate_limit("Rate limit exceeded", 120, Some(1000));
         assert!(matches!(error, ProcessingError::RateLimit { .. }));
         assert_eq!(error.error_type(), ErrorType::RateLimitError);
         assert_eq!(error.retry_after_seconds(), Some(120));
@@ -499,11 +484,7 @@ mod tests {
 
     #[test]
     fn test_timeout_error_creation() {
-        let error = ProcessingError::timeout(
-            "Processing timeout",
-            45,
-            Some(2),
-        );
+        let error = ProcessingError::timeout("Processing timeout", 45, Some(2));
         assert!(matches!(error, ProcessingError::Timeout { .. }));
         assert_eq!(error.error_type(), ErrorType::TimeoutError);
         assert_eq!(error.image_index(), Some(2));
@@ -535,7 +516,10 @@ mod tests {
 
     #[test]
     fn test_error_type_display() {
-        assert_eq!(ErrorType::ConfigurationError.to_string(), "configuration_error");
+        assert_eq!(
+            ErrorType::ConfigurationError.to_string(),
+            "configuration_error"
+        );
         assert_eq!(ErrorType::ValidationError.to_string(), "validation_error");
         assert_eq!(ErrorType::ApiError.to_string(), "api_error");
         assert_eq!(ErrorType::RateLimitError.to_string(), "rate_limit_error");
@@ -560,10 +544,8 @@ mod tests {
     #[test]
     fn test_internal_error_with_source() {
         let source_error = std::io::Error::new(std::io::ErrorKind::Other, "test error");
-        let error = ProcessingError::internal(
-            "Internal processing failed",
-            Some(Box::new(source_error)),
-        );
+        let error =
+            ProcessingError::internal("Internal processing failed", Some(Box::new(source_error)));
 
         assert!(matches!(error, ProcessingError::Internal { .. }));
         assert_eq!(error.error_type(), ErrorType::InternalError);

@@ -1,6 +1,6 @@
-use sqlx::PgPool;
-use crate::models::{Bill, CreateBill};
 use crate::api::ApiError;
+use crate::models::{Bill, CreateBill};
+use sqlx::PgPool;
 
 pub struct BillService {
     pool: PgPool,
@@ -91,7 +91,11 @@ impl BillService {
 
     /// Update a bill by ID
     /// Uses compile-time query validation with sqlx::query!
-    pub async fn update_bill(&self, id: i32, update_bill: CreateBill) -> Result<Option<Bill>, ApiError> {
+    pub async fn update_bill(
+        &self,
+        id: i32,
+        update_bill: CreateBill,
+    ) -> Result<Option<Bill>, ApiError> {
         let bill = sqlx::query_as!(
             Bill,
             r#"
@@ -129,13 +133,10 @@ impl BillService {
     /// Delete a bill by ID
     /// Uses compile-time query validation with sqlx::query!
     pub async fn delete_bill(&self, id: i32) -> Result<bool, ApiError> {
-        let result = sqlx::query!(
-            "DELETE FROM bills WHERE id = $1",
-            id
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
+        let result = sqlx::query!("DELETE FROM bills WHERE id = $1", id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(result.rows_affected() > 0)
     }
@@ -164,12 +165,10 @@ impl BillService {
 
     /// Get bills count - demonstrates simple aggregate query
     pub async fn get_bills_count(&self) -> Result<i64, ApiError> {
-        let count = sqlx::query!(
-            "SELECT COUNT(*) as count FROM bills"
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
+        let count = sqlx::query!("SELECT COUNT(*) as count FROM bills")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| ApiError::InternalServerError(format!("Database error: {e}")))?;
 
         Ok(count.count.unwrap_or(0))
     }

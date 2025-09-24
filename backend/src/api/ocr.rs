@@ -1,24 +1,26 @@
 use axum::{
     extract::{Multipart, State},
-    response::sse::{Event, KeepAlive, Sse},
     response::IntoResponse,
+    response::sse::{Event, KeepAlive, Sse},
 };
+use chrono::Utc;
 use futures_util::stream::Stream;
 use std::{convert::Infallible, pin::Pin, sync::Arc, time::Instant};
 use tokio::sync::broadcast;
+use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
-use chrono::Utc;
-use tracing::{info, warn, error, debug, instrument};
 
 use crate::{
     config::UploadConfig,
     errors::UploadError,
-    models::{ProcessingEvent, ValidationErrorCode, ProcessingErrorType, ImageFileInfo, ValidationStatus},
+    models::{
+        ImageFileInfo, ProcessingErrorType, ProcessingEvent, ValidationErrorCode, ValidationStatus,
+    },
     services::{
-        image_validation::{validate_image_format, validate_file_size},
-        gemini_service::{GeminiService, GeminiError},
         bill_extractor::BillDataExtractor,
         bill_service::BillService,
+        gemini_service::{GeminiError, GeminiService},
+        image_validation::{validate_file_size, validate_image_format},
     },
     state::AppState,
 };
@@ -33,7 +35,14 @@ pub async fn upload_images_sse(
 
     // Start background processing
     tokio::spawn(async move {
-        if let Err(e) = process_upload_with_events(multipart, broadcaster.clone(), session_id.clone(), app_state_clone).await {
+        if let Err(e) = process_upload_with_events(
+            multipart,
+            broadcaster.clone(),
+            session_id.clone(),
+            app_state_clone,
+        )
+        .await
+        {
             let _ = broadcaster.send(ProcessingEvent::ProcessingError {
                 session_id,
                 error_message: e.to_string(),
@@ -45,32 +54,34 @@ pub async fn upload_images_sse(
 
     // Return SSE stream
     let mut receiver = app_state.event_broadcaster.subscribe();
-    let stream: Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>> = Box::pin(async_stream::stream! {
-        while let Ok(event) = receiver.recv().await {
-            let event_type = match &event {
-                ProcessingEvent::UploadStarted { .. } => "upload_started",
-                ProcessingEvent::ImageReceived { .. } => "image_received",
-                ProcessingEvent::ImageValidationStart { .. } => "image_validation_start",
-                ProcessingEvent::ImageValidationSuccess { .. } => "image_validation_success",
-                ProcessingEvent::ImageValidationError { .. } => "image_validation_error",
-                ProcessingEvent::AllImagesValidated { .. } => "all_images_validated",
-                ProcessingEvent::ProcessingComplete { .. } => "processing_complete",
-                ProcessingEvent::ProcessingError { .. } => "processing_error",
-                ProcessingEvent::GeminiProcessingStart { .. } => "gemini_processing_start",
-                ProcessingEvent::GeminiProcessingSuccess { .. } => "gemini_processing_success",
-                ProcessingEvent::GeminiProcessingError { .. } => "gemini_processing_error",
-                ProcessingEvent::BillDataSaved { .. } => "bill_data_saved",
-            };
+    let stream: Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>> = Box::pin(
+        async_stream::stream! {
+            while let Ok(event) = receiver.recv().await {
+                let event_type = match &event {
+                    ProcessingEvent::UploadStarted { .. } => "upload_started",
+                    ProcessingEvent::ImageReceived { .. } => "image_received",
+                    ProcessingEvent::ImageValidationStart { .. } => "image_validation_start",
+                    ProcessingEvent::ImageValidationSuccess { .. } => "image_validation_success",
+                    ProcessingEvent::ImageValidationError { .. } => "image_validation_error",
+                    ProcessingEvent::AllImagesValidated { .. } => "all_images_validated",
+                    ProcessingEvent::ProcessingComplete { .. } => "processing_complete",
+                    ProcessingEvent::ProcessingError { .. } => "processing_error",
+                    ProcessingEvent::GeminiProcessingStart { .. } => "gemini_processing_start",
+                    ProcessingEvent::GeminiProcessingSuccess { .. } => "gemini_processing_success",
+                    ProcessingEvent::GeminiProcessingError { .. } => "gemini_processing_error",
+                    ProcessingEvent::BillDataSaved { .. } => "bill_data_saved",
+                };
 
-            let data = serde_json::to_string(&event).unwrap_or_default();
-            yield Ok(Event::default().event(event_type).data(data));
+                let data = serde_json::to_string(&event).unwrap_or_default();
+                yield Ok(Event::default().event(event_type).data(data));
 
-            // Close stream on completion
-            if matches!(event, ProcessingEvent::ProcessingComplete { .. } | ProcessingEvent::ProcessingError { .. }) {
-                break;
+                // Close stream on completion
+                if matches!(event, ProcessingEvent::ProcessingComplete { .. } | ProcessingEvent::ProcessingError { .. }) {
+                    break;
+                }
             }
-        }
-    });
+        },
+    );
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
@@ -86,17 +97,26 @@ async fn process_upload_with_events(
     let mut files = Vec::new();
 
     // Collect all files first
-    while let Some(field) = multipart.next_field().await.map_err(|e| UploadError::MultipartError(e.to_string()))? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| UploadError::MultipartError(e.to_string()))?
+    {
         if field.name() == Some("images") {
             let file_name = field.file_name().map(|s| s.to_string());
-            let data = field.bytes().await.map_err(|e| UploadError::MultipartError(e.to_string()))?;
+            let data = field
+                .bytes()
+                .await
+                .map_err(|e| UploadError::MultipartError(e.to_string()))?;
 
             files.push((file_name, data));
         }
     }
 
     if files.is_empty() {
-        return Err(UploadError::MultipartError("No images provided".to_string()));
+        return Err(UploadError::MultipartError(
+            "No images provided".to_string(),
+        ));
     }
 
     // Send upload started event
@@ -134,7 +154,15 @@ async fn process_upload_with_events(
                 });
 
                 // Process with Gemini after successful validation
-                match process_with_gemini(data, file_index, file_name.clone(), broadcaster.clone(), &app_state.pool).await {
+                match process_with_gemini(
+                    data,
+                    file_index,
+                    file_name.clone(),
+                    broadcaster.clone(),
+                    &app_state.pool,
+                )
+                .await
+                {
                     Ok(()) => {
                         successful_files += 1;
                     }
@@ -181,7 +209,11 @@ async fn process_upload_with_events(
     Ok(())
 }
 
-async fn validate_file(data: &[u8], config: &UploadConfig, file_index: usize) -> Result<ImageFileInfo, UploadError> {
+async fn validate_file(
+    data: &[u8],
+    config: &UploadConfig,
+    file_index: usize,
+) -> Result<ImageFileInfo, UploadError> {
     let validation_start = Instant::now();
 
     validate_file_size(data.len(), config.max_file_size_bytes)?;
@@ -193,7 +225,11 @@ async fn validate_file(data: &[u8], config: &UploadConfig, file_index: usize) ->
         file_name: None, // Will be set by caller
         content_type: content_type.clone(),
         size_bytes: data.len(),
-        format: content_type.split('/').nth(1).unwrap_or("unknown").to_uppercase(),
+        format: content_type
+            .split('/')
+            .nth(1)
+            .unwrap_or("unknown")
+            .to_uppercase(),
         validation_status: ValidationStatus::Valid,
         file_index,
         processed_at: Utc::now(),
@@ -202,7 +238,10 @@ async fn validate_file(data: &[u8], config: &UploadConfig, file_index: usize) ->
 }
 
 /// Process image with Gemini AI and save extracted bill data
-#[instrument(skip(image_data, broadcaster, connection_pool), fields(file_index, file_name))]
+#[instrument(
+    skip(image_data, broadcaster, connection_pool),
+    fields(file_index, file_name)
+)]
 async fn process_with_gemini(
     image_data: &[u8],
     file_index: usize,
@@ -210,8 +249,11 @@ async fn process_with_gemini(
     broadcaster: broadcast::Sender<ProcessingEvent>,
     connection_pool: &crate::config::ConnectionPool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    info!("Starting Gemini processing for file {} (index: {})",
-          file_name.as_deref().unwrap_or("unknown"), file_index);
+    info!(
+        "Starting Gemini processing for file {} (index: {})",
+        file_name.as_deref().unwrap_or("unknown"),
+        file_index
+    );
 
     // Send Gemini processing start event
     let _ = broadcaster.send(ProcessingEvent::GeminiProcessingStart {
@@ -222,32 +264,35 @@ async fn process_with_gemini(
 
     // Initialize Gemini service
     debug!("Initializing Gemini service");
-    let gemini_service = GeminiService::with_default_config()
-        .map_err(|e| {
-            error!("Failed to initialize Gemini service: {}", e);
-            format!("Failed to initialize Gemini service: {}", e)
-        })?;
+    let gemini_service = GeminiService::with_default_config().map_err(|e| {
+        error!("Failed to initialize Gemini service: {}", e);
+        format!("Failed to initialize Gemini service: {}", e)
+    })?;
 
     // Extract bill data from image
-    let gemini_response = match gemini_service.extract_bill_data(image_data).await {
+    let gemini_responses = match gemini_service.extract_bill_data(image_data).await {
         Ok(response) => response,
         Err(GeminiError::RateLimitExceeded { retry_after }) => {
-            let error_msg = format!("Gemini API rate limit exceeded. Retry after: {:?} seconds", retry_after);
+            let error_msg = format!(
+                "Gemini API rate limit exceeded. Retry after: {:?} seconds",
+                retry_after
+            );
             let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
                 file_index,
                 error_message: error_msg.clone(),
                 timestamp: Utc::now(),
             });
-            return Err(error_msg.into());
+            return Err(UploadError::MultipartError(error_msg).into());
         }
         Err(GeminiError::AuthenticationFailed) => {
-            let error_msg = "Gemini API authentication failed. Please check your API key.";
+            let error_msg =
+                "Gemini API authentication failed. Please check your API key.".to_string();
             let _ = broadcaster.send(ProcessingEvent::GeminiProcessingError {
                 file_index,
-                error_message: error_msg.to_string(),
+                error_message: error_msg.clone(),
                 timestamp: Utc::now(),
             });
-            return Err(error_msg.into());
+            return Err(UploadError::MultipartError(error_msg).into());
         }
         Err(GeminiError::Timeout { seconds }) => {
             let error_msg = format!("Gemini API request timeout after {} seconds", seconds);
@@ -256,7 +301,7 @@ async fn process_with_gemini(
                 error_message: error_msg.clone(),
                 timestamp: Utc::now(),
             });
-            return Err(error_msg.into());
+            return Err(UploadError::MultipartError(error_msg).into());
         }
         Err(GeminiError::ApiError { status, message }) => {
             let error_msg = format!("Gemini API error {}: {}", status, message);
@@ -265,7 +310,7 @@ async fn process_with_gemini(
                 error_message: error_msg.clone(),
                 timestamp: Utc::now(),
             });
-            return Err(error_msg.into());
+            return Err(UploadError::MultipartError(error_msg).into());
         }
         Err(e) => {
             let error_msg = format!("Gemini processing failed: {}", e);
@@ -274,45 +319,61 @@ async fn process_with_gemini(
                 error_message: error_msg.clone(),
                 timestamp: Utc::now(),
             });
-            return Err(error_msg.into());
+            return Err(UploadError::MultipartError(error_msg).into());
         }
     };
 
     // Send Gemini processing success event
     let _ = broadcaster.send(ProcessingEvent::GeminiProcessingSuccess {
         file_index,
-        extracted_data: gemini_response.clone(),
+        extracted_data: gemini_responses.clone(),
         timestamp: Utc::now(),
     });
 
-    // Extract and validate bill data
-    debug!("Extracting and validating bill data from Gemini response");
+    debug!(
+        "Extracting and validating bill data from Gemini response ({} candidate(s))",
+        gemini_responses.len()
+    );
     let extractor = BillDataExtractor::new();
-    let bill_data = extractor
-        .extract_and_validate(&gemini_response)
-        .map_err(|e| {
-            error!("Data extraction error: {}", e);
-            format!("Data extraction error: {}", e)
-        })?;
-    debug!("Successfully extracted bill data: form_no={:?}, invoice_no={:?}",
-           bill_data.form_no, bill_data.invoice_no);
-
-    // Save to database using BillService
-    debug!("Saving extracted bill data to database");
     let bill_service = BillService::new(connection_pool.pool().clone());
-    match bill_service.create_bill(bill_data).await {
-        Ok(bill) => {
-            info!("Successfully saved bill data to database with ID: {}", bill.id);
-            let _ = broadcaster.send(ProcessingEvent::BillDataSaved {
-                file_index,
-                bill_id: bill.id,
-                timestamp: Utc::now(),
-            });
-        }
-        Err(e) => {
-            // Don't fail the entire process if database save fails
-            // Just log the error and continue
-            error!("Failed to save bill data to database: {:?}", e);
+
+    for (candidate_idx, response) in gemini_responses.iter().enumerate() {
+        debug!(
+            "Validating Gemini candidate {} for file index {}",
+            candidate_idx, file_index
+        );
+
+        let bill_data = extractor.extract_and_validate(response).map_err(|e| {
+            error!(
+                "Data extraction error for candidate {}: {}",
+                candidate_idx, e
+            );
+            UploadError::MultipartError(format!("Data extraction error: {}", e))
+        })?;
+
+        debug!(
+            "Successfully extracted bill data from candidate {}: form_no={:?}, invoice_no={:?}",
+            candidate_idx, bill_data.form_no, bill_data.invoice_no
+        );
+
+        match bill_service.create_bill(bill_data).await {
+            Ok(bill) => {
+                info!(
+                    "Successfully saved bill data (candidate {}) to database with ID: {}",
+                    candidate_idx, bill.id
+                );
+                let _ = broadcaster.send(ProcessingEvent::BillDataSaved {
+                    file_index,
+                    bill_id: bill.id,
+                    timestamp: Utc::now(),
+                });
+            }
+            Err(e) => {
+                error!(
+                    "Failed to save bill data (candidate {}) to database: {:?}",
+                    candidate_idx, e
+                );
+            }
         }
     }
 
@@ -323,15 +384,17 @@ fn map_error_to_code(error: &UploadError) -> ValidationErrorCode {
     match error {
         UploadError::FileSizeExceeded { size, limit } => ValidationErrorCode::FileSizeExceeded {
             actual: *size,
-            limit: *limit
+            limit: *limit,
         },
         UploadError::InvalidImageFormat(format) => ValidationErrorCode::UnsupportedFormat {
-            detected: format.clone()
+            detected: format.clone(),
         },
-        UploadError::ImageCountExceeded { count, limit } => ValidationErrorCode::CountLimitExceeded {
-            count: *count,
-            limit: *limit
-        },
+        UploadError::ImageCountExceeded { count, limit } => {
+            ValidationErrorCode::CountLimitExceeded {
+                count: *count,
+                limit: *limit,
+            }
+        }
         UploadError::MultipartError(_) => ValidationErrorCode::CorruptedFile,
     }
 }
@@ -376,7 +439,11 @@ pub async fn upload_images(
                 file_name,
                 content_type: content_type.clone(),
                 size_bytes: data.len(),
-                format: content_type.split('/').nth(1).unwrap_or("unknown").to_uppercase(),
+                format: content_type
+                    .split('/')
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .to_uppercase(),
                 validation_status: ValidationStatus::Valid,
                 file_index: image_count - 1,
                 processed_at: Utc::now(),
@@ -388,7 +455,9 @@ pub async fn upload_images(
     }
 
     if image_count == 0 {
-        return Err(UploadError::MultipartError("No images provided".to_string()));
+        return Err(UploadError::MultipartError(
+            "No images provided".to_string(),
+        ));
     }
 
     let processing_time = start_time.elapsed().as_millis() as u64;

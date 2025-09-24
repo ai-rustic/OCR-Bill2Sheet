@@ -1,8 +1,11 @@
-use std::time::Duration;
+use crate::utils::env::{
+    parse_env_duration_with_fallback, parse_env_optional_duration_with_fallback,
+    parse_env_u32_with_fallback,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{PgPool, Error as SqlxError};
-use crate::utils::env::{parse_env_u32_with_fallback, parse_env_duration_with_fallback, parse_env_optional_duration_with_fallback};
+use sqlx::{Error as SqlxError, PgPool};
+use std::time::Duration;
 
 /// Configuration structure for database connection parameters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,35 +38,29 @@ impl DatabaseConfig {
     pub fn from_env() -> Result<Self, DatabaseError> {
         dotenvy::dotenv().ok(); // Load .env file if present
 
-        let database_url = std::env::var("DATABASE_URL")
-            .map_err(|_| DatabaseError::Configuration(
-                "DATABASE_URL environment variable is required".to_string()
-            ))?;
+        let database_url = std::env::var("DATABASE_URL").map_err(|_| {
+            DatabaseError::Configuration(
+                "DATABASE_URL environment variable is required".to_string(),
+            )
+        })?;
 
         // Support both DB_MAX_CONNECTIONS and DATABASE_MAX_CONNECTIONS formats
-        let max_connections = parse_env_u32_with_fallback(
-            "DATABASE_MAX_CONNECTIONS",
-            "DB_MAX_CONNECTIONS",
-            10
-        );
+        let max_connections =
+            parse_env_u32_with_fallback("DATABASE_MAX_CONNECTIONS", "DB_MAX_CONNECTIONS", 10);
 
         // Support both DB_ACQUIRE_TIMEOUT and DATABASE_ACQUIRE_TIMEOUT formats
         let connection_timeout = parse_env_duration_with_fallback(
             "DATABASE_ACQUIRE_TIMEOUT",
             "DB_CONNECTION_TIMEOUT",
-            Duration::from_secs(30)
+            Duration::from_secs(30),
         );
 
         // Support both DB_IDLE_TIMEOUT and DATABASE_IDLE_TIMEOUT formats
-        let idle_timeout = parse_env_optional_duration_with_fallback(
-            "DATABASE_IDLE_TIMEOUT",
-            "DB_IDLE_TIMEOUT"
-        );
+        let idle_timeout =
+            parse_env_optional_duration_with_fallback("DATABASE_IDLE_TIMEOUT", "DB_IDLE_TIMEOUT");
 
-        let max_lifetime = parse_env_optional_duration_with_fallback(
-            "DATABASE_MAX_LIFETIME",
-            "DB_MAX_LIFETIME"
-        );
+        let max_lifetime =
+            parse_env_optional_duration_with_fallback("DATABASE_MAX_LIFETIME", "DB_MAX_LIFETIME");
 
         let config = Self {
             database_url,
@@ -110,30 +107,32 @@ impl DatabaseConfig {
     /// Validate configuration parameters
     pub fn validate(&self) -> Result<(), DatabaseError> {
         // Validate database URL format
-        if !self.database_url.starts_with("postgresql://") && !self.database_url.starts_with("postgres://") {
+        if !self.database_url.starts_with("postgresql://")
+            && !self.database_url.starts_with("postgres://")
+        {
             return Err(DatabaseError::Configuration(
-                "database_url must be a valid PostgreSQL URL format".to_string()
+                "database_url must be a valid PostgreSQL URL format".to_string(),
             ));
         }
 
         // Validate max_connections
         if self.max_connections == 0 || self.max_connections > 100 {
             return Err(DatabaseError::Configuration(
-                "max_connections must be > 0 and <= 100".to_string()
+                "max_connections must be > 0 and <= 100".to_string(),
             ));
         }
 
         // Validate timeout values are positive
         if self.connection_timeout.is_zero() {
             return Err(DatabaseError::Configuration(
-                "connection_timeout must be positive".to_string()
+                "connection_timeout must be positive".to_string(),
             ));
         }
 
         if let Some(idle_timeout) = self.idle_timeout {
             if idle_timeout.is_zero() {
                 return Err(DatabaseError::Configuration(
-                    "idle_timeout must be positive".to_string()
+                    "idle_timeout must be positive".to_string(),
                 ));
             }
         }
@@ -141,7 +140,7 @@ impl DatabaseConfig {
         if let Some(max_lifetime) = self.max_lifetime {
             if max_lifetime.is_zero() {
                 return Err(DatabaseError::Configuration(
-                    "max_lifetime must be positive".to_string()
+                    "max_lifetime must be positive".to_string(),
                 ));
             }
         }

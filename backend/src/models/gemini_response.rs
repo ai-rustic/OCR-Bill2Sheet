@@ -3,9 +3,9 @@
 //! This module defines the data structures for receiving responses from the Gemini AI API
 //! for Vietnamese bill/invoice OCR processing. The structure mirrors the bills database schema.
 
-use serde::{Deserialize, Serialize, Deserializer};
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Deserializer, Serialize};
 
 fn deserialize_null_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
@@ -114,44 +114,47 @@ impl GeminiResponse {
     ///
     /// Converts the total_amount field to Decimal for precise calculations.
     pub fn get_total_amount_decimal(&self) -> Option<Decimal> {
-        self.total_amount.map(|amount| Decimal::try_from(amount).unwrap_or_default())
+        self.total_amount
+            .map(|amount| Decimal::try_from(amount).unwrap_or_default())
     }
 
     /// Convert VAT rate f64 to Decimal
     ///
     /// Converts the vat_rate field to Decimal percentage.
     pub fn get_vat_rate_decimal(&self) -> Option<Decimal> {
-        self.vat_rate.map(|rate| Decimal::try_from(rate).unwrap_or_default())
+        self.vat_rate
+            .map(|rate| Decimal::try_from(rate).unwrap_or_default())
     }
 
     /// Convert VAT amount f64 to Decimal
     ///
     /// Converts the vat_amount field to Decimal for precise calculations.
     pub fn get_vat_amount_decimal(&self) -> Option<Decimal> {
-        self.vat_amount.map(|amount| Decimal::try_from(amount).unwrap_or_default())
+        self.vat_amount
+            .map(|amount| Decimal::try_from(amount).unwrap_or_default())
     }
 
     /// Convert quantity f64 to Decimal
     ///
     /// Converts the quantity field to Decimal for precise calculations.
     pub fn get_quantity_decimal(&self) -> Option<Decimal> {
-        self.quantity.map(|qty| Decimal::try_from(qty).unwrap_or_default())
+        self.quantity
+            .map(|qty| Decimal::try_from(qty).unwrap_or_default())
     }
 
     /// Convert unit price f64 to Decimal
     ///
     /// Converts the unit_price field to Decimal for precise calculations.
     pub fn get_unit_price_decimal(&self) -> Option<Decimal> {
-        self.unit_price.map(|price| Decimal::try_from(price).unwrap_or_default())
+        self.unit_price
+            .map(|price| Decimal::try_from(price).unwrap_or_default())
     }
 
     /// Validate that at least some essential fields are present
     ///
     /// Returns true if the response contains at least one of the core invoice fields.
     pub fn has_essential_data(&self) -> bool {
-        self.invoice_no.is_some()
-            || self.seller_name.is_some()
-            || self.total_amount.is_some()
+        self.invoice_no.is_some() || self.seller_name.is_some() || self.total_amount.is_some()
     }
 }
 

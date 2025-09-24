@@ -1,5 +1,5 @@
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 /// Configuration structure for Gemini AI API integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,27 +32,32 @@ impl GeminiConfig {
     pub fn from_env() -> Result<Self, GeminiConfigError> {
         dotenvy::dotenv().ok(); // Load .env file if present
 
-        let api_key = std::env::var("GEMINI_API_KEY")
-            .map_err(|_| GeminiConfigError::Configuration(
-                "GEMINI_API_KEY environment variable is required".to_string()
-            ))?;
+        let api_key = std::env::var("GEMINI_API_KEY").map_err(|_| {
+            GeminiConfigError::Configuration(
+                "GEMINI_API_KEY environment variable is required".to_string(),
+            )
+        })?;
 
-        let model = std::env::var("GEMINI_MODEL")
-            .unwrap_or_else(|_| "gemini-pro-vision".to_string());
+        let model =
+            std::env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-pro-vision".to_string());
 
         let timeout_seconds = std::env::var("GEMINI_TIMEOUT_SECONDS")
             .unwrap_or_else(|_| "45".to_string())
             .parse()
-            .map_err(|_| GeminiConfigError::Configuration(
-                "GEMINI_TIMEOUT_SECONDS must be a valid number".to_string()
-            ))?;
+            .map_err(|_| {
+                GeminiConfigError::Configuration(
+                    "GEMINI_TIMEOUT_SECONDS must be a valid number".to_string(),
+                )
+            })?;
 
         let max_image_size_mb = std::env::var("GEMINI_MAX_IMAGE_SIZE_MB")
             .unwrap_or_else(|_| "20".to_string())
             .parse()
-            .map_err(|_| GeminiConfigError::Configuration(
-                "GEMINI_MAX_IMAGE_SIZE_MB must be a valid number".to_string()
-            ))?;
+            .map_err(|_| {
+                GeminiConfigError::Configuration(
+                    "GEMINI_MAX_IMAGE_SIZE_MB must be a valid number".to_string(),
+                )
+            })?;
 
         let base_url = std::env::var("GEMINI_BASE_URL")
             .unwrap_or_else(|_| "https://generativelanguage.googleapis.com/v1beta".to_string());
@@ -79,18 +84,18 @@ impl GeminiConfig {
     pub fn display_config(&self) -> String {
         // Mask the API key for security
         let masked_api_key = if self.api_key.len() > 8 {
-            format!("{}***{}", &self.api_key[..4], &self.api_key[self.api_key.len()-4..])
+            format!(
+                "{}***{}",
+                &self.api_key[..4],
+                &self.api_key[self.api_key.len() - 4..]
+            )
         } else {
             "***".to_string()
         };
 
         format!(
             "GeminiConfig {{ api_key: {}, model: {}, timeout: {}s, max_image_size: {}MB, base_url: {} }}",
-            masked_api_key,
-            self.model,
-            self.timeout_seconds,
-            self.max_image_size_mb,
-            self.base_url
+            masked_api_key, self.model, self.timeout_seconds, self.max_image_size_mb, self.base_url
         )
     }
 
@@ -99,35 +104,35 @@ impl GeminiConfig {
         // Validate API key is not empty
         if self.api_key.trim().is_empty() {
             return Err(GeminiConfigError::Configuration(
-                "api_key cannot be empty".to_string()
+                "api_key cannot be empty".to_string(),
             ));
         }
 
         // Validate model name is not empty
         if self.model.trim().is_empty() {
             return Err(GeminiConfigError::Configuration(
-                "model name cannot be empty".to_string()
+                "model name cannot be empty".to_string(),
             ));
         }
 
         // Validate timeout is reasonable (between 1 and 600 seconds)
         if self.timeout_seconds == 0 || self.timeout_seconds > 600 {
             return Err(GeminiConfigError::Configuration(
-                "timeout_seconds must be between 1 and 600".to_string()
+                "timeout_seconds must be between 1 and 600".to_string(),
             ));
         }
 
         // Validate max image size is reasonable (between 1 and 100MB)
         if self.max_image_size_mb == 0 || self.max_image_size_mb > 100 {
             return Err(GeminiConfigError::Configuration(
-                "max_image_size_mb must be between 1 and 100".to_string()
+                "max_image_size_mb must be between 1 and 100".to_string(),
             ));
         }
 
         // Validate base URL format
         if !self.base_url.starts_with("https://") {
             return Err(GeminiConfigError::Configuration(
-                "base_url must start with https://".to_string()
+                "base_url must start with https://".to_string(),
             ));
         }
 

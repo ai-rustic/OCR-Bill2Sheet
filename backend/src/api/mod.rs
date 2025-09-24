@@ -19,15 +19,15 @@ pub mod ocr;
 pub mod response;
 
 // Re-export endpoint handlers for router setup
-pub use health::{get_health, get_health_detail};
 pub use bills::{
-    get_all_bills, get_bill_by_id, create_bill, update_bill,
-    delete_bill, search_bills, get_bills_count
+    create_bill, delete_bill, get_all_bills, get_bill_by_id, get_bills_count, search_bills,
+    update_bill,
 };
+pub use health::{get_health, get_health_detail};
 pub use ocr::{upload_images, upload_images_sse};
 
 // Re-export response utilities
-pub use response::{ApiResponse};
+pub use response::ApiResponse;
 
 // Middleware functions are defined in this module and will be used in main.rs
 
@@ -47,14 +47,8 @@ impl IntoResponse for ApiError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Internal server error: {msg}"),
             ),
-            ApiError::BadRequest(msg) => (
-                StatusCode::BAD_REQUEST,
-                format!("Bad request: {msg}"),
-            ),
-            ApiError::NotFound(msg) => (
-                StatusCode::NOT_FOUND,
-                format!("Not found: {msg}"),
-            ),
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, format!("Bad request: {msg}")),
+            ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, format!("Not found: {msg}")),
             ApiError::ServiceUnavailable(msg) => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 format!("Service unavailable: {msg}"),
@@ -75,10 +69,7 @@ impl IntoResponse for ApiError {
 /// This middleware catches any panics or unhandled errors in handlers and
 /// converts them to properly formatted API error responses. It also provides
 /// logging for debugging and monitoring purposes.
-pub async fn error_handling_middleware(
-    request: Request<axum::body::Body>,
-    next: Next,
-) -> Response {
+pub async fn error_handling_middleware(request: Request<axum::body::Body>, next: Next) -> Response {
     let method = request.method().clone();
     let uri = request.uri().clone();
 
@@ -118,7 +109,7 @@ pub async fn timeout_middleware(
     request: Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, ApiError> {
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     let method = request.method().clone();
     let uri = request.uri().clone();
@@ -127,7 +118,7 @@ pub async fn timeout_middleware(
     let timeout_duration = if uri.path().starts_with("/api/ocr") {
         Duration::from_secs(120) // 2 minutes for OCR uploads
     } else {
-        Duration::from_secs(30)  // 30 seconds for other endpoints
+        Duration::from_secs(30) // 30 seconds for other endpoints
     };
 
     match timeout(timeout_duration, next.run(request)).await {
@@ -139,7 +130,7 @@ pub async fn timeout_middleware(
                 "Request timed out after {} seconds", timeout_duration.as_secs()
             );
             Err(ApiError::ServiceUnavailable(
-                "Request timed out".to_string()
+                "Request timed out".to_string(),
             ))
         }
     }
@@ -160,9 +151,7 @@ pub async fn not_found_handler() -> ApiError {
 impl From<sqlx::Error> for ApiError {
     fn from(err: sqlx::Error) -> Self {
         match err {
-            sqlx::Error::RowNotFound => {
-                ApiError::NotFound("Resource not found".to_string())
-            }
+            sqlx::Error::RowNotFound => ApiError::NotFound("Resource not found".to_string()),
             sqlx::Error::Database(db_err) => {
                 error!("Database error: {}", db_err);
                 ApiError::InternalServerError("Database operation failed".to_string())

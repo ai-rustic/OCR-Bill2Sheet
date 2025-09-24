@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use crate::models::{GeminiResponse, ImageFileInfo};
 use chrono::{DateTime, Utc};
-use crate::models::{ImageFileInfo, GeminiResponse};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -59,7 +59,7 @@ pub enum ProcessingEvent {
     },
     GeminiProcessingSuccess {
         file_index: usize,
-        extracted_data: GeminiResponse,
+        extracted_data: Vec<GeminiResponse>,
         timestamp: DateTime<Utc>,
     },
     GeminiProcessingError {

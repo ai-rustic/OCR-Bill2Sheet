@@ -19,17 +19,17 @@ pub enum ServerConfigError {
 impl ServerConfig {
     /// Create ServerConfig from environment variables
     pub fn from_env() -> Result<Self, ServerConfigError> {
-        let host_str = env::var("SERVER_HOST")
-            .unwrap_or_else(|_| "127.0.0.1".to_string());
+        let host_str = env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
-        let port_str = env::var("SERVER_PORT")
-            .unwrap_or_else(|_| "3000".to_string());
+        let port_str = env::var("SERVER_PORT").unwrap_or_else(|_| "3000".to_string());
 
-        let host: IpAddr = host_str.parse()
-            .map_err(|e| ServerConfigError::Parse(format!("Invalid SERVER_HOST '{}': {}", host_str, e)))?;
+        let host: IpAddr = host_str.parse().map_err(|e| {
+            ServerConfigError::Parse(format!("Invalid SERVER_HOST '{}': {}", host_str, e))
+        })?;
 
-        let port: u16 = port_str.parse()
-            .map_err(|e| ServerConfigError::Parse(format!("Invalid SERVER_PORT '{}': {}", port_str, e)))?;
+        let port: u16 = port_str.parse().map_err(|e| {
+            ServerConfigError::Parse(format!("Invalid SERVER_PORT '{}': {}", port_str, e))
+        })?;
 
         Ok(Self { host, port })
     }

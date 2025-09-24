@@ -1,14 +1,14 @@
 pub mod database;
-pub mod upload_config;
 pub mod gemini_config;
 pub mod server_config;
+pub mod upload_config;
 
-use sqlx::PgPool;
 pub use database::{DatabaseConfig, DatabaseError};
+use sqlx::PgPool;
 pub use upload_config::UploadConfig;
 // pub use gemini_config::{GeminiConfig, GeminiConfigError};
+use crate::utils::database::{PoolInfo, test_database_connectivity_detailed};
 pub use server_config::{ServerConfig, ServerConfigError};
-use crate::utils::database::{test_database_connectivity_detailed, PoolInfo};
 
 /// Wrapper around SQLx PgPool for database connection management.
 #[derive(Debug, Clone)]
@@ -50,9 +50,9 @@ impl ConnectionPool {
     /// Initialize and warm up the connection pool
     async fn initialize_pool(&self) -> Result<(), DatabaseError> {
         // Test initial connection
-        self.health_check().await.map_err(|e| {
-            DatabaseError::Pool(format!("Initial connection test failed: {e}"))
-        })?;
+        self.health_check()
+            .await
+            .map_err(|e| DatabaseError::Pool(format!("Initial connection test failed: {e}")))?;
 
         // Warm up pool by acquiring and releasing connections
         // This ensures we have working connections available immediately
@@ -92,7 +92,10 @@ impl ConnectionPool {
             match Self::new(config.clone()).await {
                 Ok(pool) => {
                     if attempt > 0 {
-                        tracing::info!("Connection pool initialized successfully after {} retries", attempt);
+                        tracing::info!(
+                            "Connection pool initialized successfully after {} retries",
+                            attempt
+                        );
                     }
                     return Ok(pool);
                 }

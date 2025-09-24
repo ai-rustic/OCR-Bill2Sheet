@@ -32,7 +32,7 @@ pub fn parse_env_u32_with_fallback(primary: &str, fallback: &str, default: u32) 
 pub fn parse_env_duration_with_fallback(
     primary: &str,
     fallback: &str,
-    default: Duration
+    default: Duration,
 ) -> Duration {
     get_env_var_with_fallback(primary, fallback)
         .and_then(|s| s.parse::<u64>().ok())
@@ -46,7 +46,7 @@ pub fn parse_env_duration_with_fallback(
 /// using primary and fallback names, returning None if parsing fails or not found.
 pub fn parse_env_optional_duration_with_fallback(
     primary: &str,
-    fallback: &str
+    fallback: &str,
 ) -> Option<Duration> {
     get_env_var_with_fallback(primary, fallback)
         .and_then(|s| s.parse::<u64>().ok())

@@ -7,25 +7,24 @@ mod state;
 mod utils;
 
 use axum::{
+    Router,
     extract::DefaultBodyLimit,
     middleware,
     routing::{get, post},
-    Router,
 };
-use tower_http::cors::{CorsLayer, Any};
-use tracing::{info, error, warn};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
+use tower_http::cors::{Any, CorsLayer};
+use tracing::{error, info, warn};
 
-use config::{ConnectionPool, DatabaseConfig, UploadConfig, ServerConfig};
-use state::AppState;
 use api::{
-    get_health, get_health_detail, error_handling_middleware, timeout_middleware, not_found_handler,
-    get_all_bills, get_bill_by_id, create_bill, update_bill, delete_bill, search_bills, get_bills_count,
-    upload_images_sse
+    create_bill, delete_bill, error_handling_middleware, get_all_bills, get_bill_by_id,
+    get_bills_count, get_health, get_health_detail, not_found_handler, search_bills,
+    timeout_middleware, update_bill, upload_images_sse,
 };
-
+use config::{ConnectionPool, DatabaseConfig, ServerConfig, UploadConfig};
+use state::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -60,8 +59,10 @@ async fn main() {
     // Initialize upload configuration
     let upload_config = match UploadConfig::from_env() {
         Ok(config) => {
-            info!("Upload configuration loaded: max_file_size_bytes={}, max_image_count={}",
-                  config.max_file_size_bytes, config.max_image_count);
+            info!(
+                "Upload configuration loaded: max_file_size_bytes={}, max_image_count={}",
+                config.max_file_size_bytes, config.max_image_count
+            );
             Arc::new(config)
         }
         Err(e) => {
@@ -90,7 +91,10 @@ async fn main() {
         .route("/api/bills", get(get_all_bills).post(create_bill))
         .route("/api/bills/search", get(search_bills))
         .route("/api/bills/count", get(get_bills_count))
-        .route("/api/bills/{id}", get(get_bill_by_id).put(update_bill).delete(delete_bill))
+        .route(
+            "/api/bills/{id}",
+            get(get_bill_by_id).put(update_bill).delete(delete_bill),
+        )
         // OCR endpoints
         .route("/api/ocr", post(upload_images_sse))
         .fallback(not_found_handler)
@@ -99,7 +103,7 @@ async fn main() {
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
-                .allow_headers(Any)
+                .allow_headers(Any),
         )
         .layer(middleware::from_fn(request_logging_middleware))
         .layer(middleware::from_fn(error_handling_middleware))
@@ -231,7 +235,10 @@ async fn initialize_database_connection() -> ConnectionPool {
             return pool;
         }
         Err(e) => {
-            warn!("Initial database connection failed, attempting with retry logic: {}", e);
+            warn!(
+                "Initial database connection failed, attempting with retry logic: {}",
+                e
+            );
         }
     }
 
@@ -257,7 +264,10 @@ async fn initialize_database_connection() -> ConnectionPool {
             pool
         }
         Err(e) => {
-            error!("Failed to initialize database connection pool after {} retries: {}", MAX_RETRIES, e);
+            error!(
+                "Failed to initialize database connection pool after {} retries: {}",
+                MAX_RETRIES, e
+            );
             error!("Please check:");
             error!("  1. PostgreSQL server is running");
             error!("  2. Database 'bill_ocr' exists");
@@ -269,7 +279,9 @@ async fn initialize_database_connection() -> ConnectionPool {
 }
 
 /// Validate database connectivity and basic operations during startup
-async fn validate_database_startup(pool: &ConnectionPool) -> Result<(), Box<dyn std::error::Error>> {
+async fn validate_database_startup(
+    pool: &ConnectionPool,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("Performing database startup validation...");
 
     // Test basic connectivity
@@ -280,19 +292,27 @@ async fn validate_database_startup(pool: &ConnectionPool) -> Result<(), Box<dyn 
     info!("✓ Database connectivity verified");
 
     // Log connection pool status
-    info!("✓ Connection pool status: {} active connections, {} idle connections",
-          pool.pool_size(), pool.idle_connections());
+    info!(
+        "✓ Connection pool status: {} active connections, {} idle connections",
+        pool.pool_size(),
+        pool.idle_connections()
+    );
 
     // Verify we can query basic PostgreSQL information
-    let version_result = sqlx::query_scalar::<_, String>(
-        "SELECT version() as pg_version"
-    )
-    .fetch_one(pool.pool())
-    .await;
+    let version_result = sqlx::query_scalar::<_, String>("SELECT version() as pg_version")
+        .fetch_one(pool.pool())
+        .await;
 
     match version_result {
         Ok(version) => {
-            info!("✓ PostgreSQL version: {}", version.split_whitespace().take(2).collect::<Vec<_>>().join(" "));
+            info!(
+                "✓ PostgreSQL version: {}",
+                version
+                    .split_whitespace()
+                    .take(2)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
         }
         Err(e) => {
             warn!("Could not retrieve PostgreSQL version: {}", e);
@@ -300,11 +320,9 @@ async fn validate_database_startup(pool: &ConnectionPool) -> Result<(), Box<dyn 
     }
 
     // Verify database name matches expected 'bill_ocr'
-    let db_name_result = sqlx::query_scalar::<_, String>(
-        "SELECT current_database() as db_name"
-    )
-    .fetch_one(pool.pool())
-    .await;
+    let db_name_result = sqlx::query_scalar::<_, String>("SELECT current_database() as db_name")
+        .fetch_one(pool.pool())
+        .await;
 
     match db_name_result {
         Ok(db_name) => {

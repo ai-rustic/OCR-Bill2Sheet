@@ -1,11 +1,8 @@
+use crate::{config::ConnectionPool, services::health::HealthService};
 use axum::{
     extract::State,
     http::StatusCode,
     response::{IntoResponse, Json},
-};
-use crate::{
-    config::ConnectionPool,
-    services::health::HealthService,
 };
 
 /// GET /health endpoint handler
@@ -14,14 +11,9 @@ use crate::{
 /// Returns 200 OK for healthy status, 503 Service Unavailable for unhealthy status.
 ///
 /// Uses Axum State extraction to access the shared ConnectionPool instance.
-pub async fn get_health(
-    State(pool): State<ConnectionPool>,
-) -> impl IntoResponse {
+pub async fn get_health(State(pool): State<ConnectionPool>) -> impl IntoResponse {
     // Create health service with the connection pool
-    let health_service = HealthService::new(
-        pool.pool().clone(),
-        pool.config().clone(),
-    );
+    let health_service = HealthService::new(pool.pool().clone(), pool.config().clone());
 
     // Perform health check
     let health_status = health_service.check_health().await;
@@ -43,14 +35,9 @@ pub async fn get_health(
 /// Always returns 200 OK with detailed health information regardless of database status.
 ///
 /// Uses Axum State extraction to access the shared ConnectionPool instance.
-pub async fn get_health_detail(
-    State(pool): State<ConnectionPool>,
-) -> impl IntoResponse {
+pub async fn get_health_detail(State(pool): State<ConnectionPool>) -> impl IntoResponse {
     // Create health service with the connection pool
-    let health_service = HealthService::new(
-        pool.pool().clone(),
-        pool.config().clone(),
-    );
+    let health_service = HealthService::new(pool.pool().clone(), pool.config().clone());
 
     // Perform detailed health check with graceful error handling
     let detailed_health_status = health_service.check_detailed_health_safe().await;

@@ -3,18 +3,15 @@
 //! This module contains shared database functionality to eliminate
 //! code duplication across different modules.
 
-use sqlx::PgPool;
 use crate::config::DatabaseError;
+use sqlx::PgPool;
 
 /// Performs a basic database connectivity test using a simple query
 ///
 /// This function is used by both health checks and connection pool validation
 /// to ensure consistent behavior across the application.
 pub async fn test_database_connectivity(pool: &PgPool) -> bool {
-    sqlx::query("SELECT 1")
-        .fetch_one(pool)
-        .await
-        .is_ok()
+    sqlx::query("SELECT 1").fetch_one(pool).await.is_ok()
 }
 
 /// Performs a database connectivity test with error information
@@ -41,7 +38,6 @@ pub trait PoolInfo {
 
     /// Get the maximum allowed connections for the pool
     fn get_max_connections(&self) -> u32;
-
 }
 
 /// Implement PoolInfo for PgPool directly

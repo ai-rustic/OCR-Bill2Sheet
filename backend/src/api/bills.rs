@@ -5,10 +5,10 @@
 //! call service method, wrap response in ApiResponse format.
 
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::Deserialize;
 
@@ -28,9 +28,7 @@ use crate::{
 /// # Returns
 /// - 200 OK with list of bills on success
 /// - 500 Internal Server Error on database error
-pub async fn get_all_bills(
-    State(pool): State<ConnectionPool>,
-) -> impl IntoResponse {
+pub async fn get_all_bills(State(pool): State<ConnectionPool>) -> impl IntoResponse {
     // Create bill service with the connection pool
     let bill_service = BillService::new(pool.pool().clone());
 
@@ -43,9 +41,13 @@ pub async fn get_all_bills(
         Err(api_error) => {
             let response: ApiResponse<Vec<Bill>> = match api_error {
                 ApiError::NotFound(msg) => ApiResponse::error(format!("Bills not found: {msg}")),
-                ApiError::InternalServerError(msg) => ApiResponse::error(format!("Failed to fetch bills: {msg}")),
+                ApiError::InternalServerError(msg) => {
+                    ApiResponse::error(format!("Failed to fetch bills: {msg}"))
+                }
                 ApiError::BadRequest(msg) => ApiResponse::error(format!("Bad request: {msg}")),
-                ApiError::ServiceUnavailable(msg) => ApiResponse::error(format!("Service unavailable: {msg}")),
+                ApiError::ServiceUnavailable(msg) => {
+                    ApiResponse::error(format!("Service unavailable: {msg}"))
+                }
             };
             (StatusCode::INTERNAL_SERVER_ERROR, Json(response)).into_response()
         }
@@ -79,15 +81,20 @@ pub async fn get_bill_by_id(
             (StatusCode::OK, Json(response)).into_response()
         }
         Ok(None) => {
-            let response: ApiResponse<Bill> = ApiResponse::error(format!("Bill with ID {id} not found"));
+            let response: ApiResponse<Bill> =
+                ApiResponse::error(format!("Bill with ID {id} not found"));
             (StatusCode::NOT_FOUND, Json(response)).into_response()
         }
         Err(api_error) => {
             let response: ApiResponse<Bill> = match api_error {
                 ApiError::NotFound(msg) => ApiResponse::error(format!("Bill not found: {msg}")),
-                ApiError::InternalServerError(msg) => ApiResponse::error(format!("Failed to fetch bill: {msg}")),
+                ApiError::InternalServerError(msg) => {
+                    ApiResponse::error(format!("Failed to fetch bill: {msg}"))
+                }
                 ApiError::BadRequest(msg) => ApiResponse::error(format!("Bad request: {msg}")),
-                ApiError::ServiceUnavailable(msg) => ApiResponse::error(format!("Service unavailable: {msg}")),
+                ApiError::ServiceUnavailable(msg) => {
+                    ApiResponse::error(format!("Service unavailable: {msg}"))
+                }
             };
             (StatusCode::INTERNAL_SERVER_ERROR, Json(response)).into_response()
         }
@@ -123,9 +130,13 @@ pub async fn create_bill(
         Err(api_error) => {
             let response: ApiResponse<Bill> = match api_error {
                 ApiError::NotFound(msg) => ApiResponse::error(format!("Resource not found: {msg}")),
-                ApiError::InternalServerError(msg) => ApiResponse::error(format!("Failed to create bill: {msg}")),
+                ApiError::InternalServerError(msg) => {
+                    ApiResponse::error(format!("Failed to create bill: {msg}"))
+                }
                 ApiError::BadRequest(msg) => ApiResponse::error(format!("Bad request: {msg}")),
-                ApiError::ServiceUnavailable(msg) => ApiResponse::error(format!("Service unavailable: {msg}")),
+                ApiError::ServiceUnavailable(msg) => {
+                    ApiResponse::error(format!("Service unavailable: {msg}"))
+                }
             };
             (StatusCode::BAD_REQUEST, Json(response)).into_response()
         }
@@ -162,15 +173,20 @@ pub async fn update_bill(
             (StatusCode::OK, Json(response)).into_response()
         }
         Ok(None) => {
-            let response: ApiResponse<Bill> = ApiResponse::error(format!("Bill with ID {id} not found"));
+            let response: ApiResponse<Bill> =
+                ApiResponse::error(format!("Bill with ID {id} not found"));
             (StatusCode::NOT_FOUND, Json(response)).into_response()
         }
         Err(api_error) => {
             let response: ApiResponse<Bill> = match api_error {
                 ApiError::NotFound(msg) => ApiResponse::error(format!("Bill not found: {msg}")),
-                ApiError::InternalServerError(msg) => ApiResponse::error(format!("Failed to update bill: {msg}")),
+                ApiError::InternalServerError(msg) => {
+                    ApiResponse::error(format!("Failed to update bill: {msg}"))
+                }
                 ApiError::BadRequest(msg) => ApiResponse::error(format!("Bad request: {msg}")),
-                ApiError::ServiceUnavailable(msg) => ApiResponse::error(format!("Service unavailable: {msg}")),
+                ApiError::ServiceUnavailable(msg) => {
+                    ApiResponse::error(format!("Service unavailable: {msg}"))
+                }
             };
             (StatusCode::BAD_REQUEST, Json(response)).into_response()
         }
@@ -204,15 +220,20 @@ pub async fn delete_bill(
             (StatusCode::OK, Json(response)).into_response()
         }
         Ok(false) => {
-            let response: ApiResponse<String> = ApiResponse::error(format!("Bill with ID {id} not found"));
+            let response: ApiResponse<String> =
+                ApiResponse::error(format!("Bill with ID {id} not found"));
             (StatusCode::NOT_FOUND, Json(response)).into_response()
         }
         Err(api_error) => {
             let response: ApiResponse<String> = match api_error {
                 ApiError::NotFound(msg) => ApiResponse::error(format!("Bill not found: {msg}")),
-                ApiError::InternalServerError(msg) => ApiResponse::error(format!("Failed to delete bill: {msg}")),
+                ApiError::InternalServerError(msg) => {
+                    ApiResponse::error(format!("Failed to delete bill: {msg}"))
+                }
                 ApiError::BadRequest(msg) => ApiResponse::error(format!("Bad request: {msg}")),
-                ApiError::ServiceUnavailable(msg) => ApiResponse::error(format!("Service unavailable: {msg}")),
+                ApiError::ServiceUnavailable(msg) => {
+                    ApiResponse::error(format!("Service unavailable: {msg}"))
+                }
             };
             (StatusCode::INTERNAL_SERVER_ERROR, Json(response)).into_response()
         }
@@ -264,17 +285,27 @@ pub async fn search_bills(
                 }
                 Err(api_error) => {
                     let response: ApiResponse<Vec<Bill>> = match api_error {
-                        ApiError::NotFound(msg) => ApiResponse::error(format!("Bills not found: {msg}")),
-                        ApiError::InternalServerError(msg) => ApiResponse::error(format!("Failed to search bills: {msg}")),
-                        ApiError::BadRequest(msg) => ApiResponse::error(format!("Bad request: {msg}")),
-                        ApiError::ServiceUnavailable(msg) => ApiResponse::error(format!("Service unavailable: {msg}")),
+                        ApiError::NotFound(msg) => {
+                            ApiResponse::error(format!("Bills not found: {msg}"))
+                        }
+                        ApiError::InternalServerError(msg) => {
+                            ApiResponse::error(format!("Failed to search bills: {msg}"))
+                        }
+                        ApiError::BadRequest(msg) => {
+                            ApiResponse::error(format!("Bad request: {msg}"))
+                        }
+                        ApiError::ServiceUnavailable(msg) => {
+                            ApiResponse::error(format!("Service unavailable: {msg}"))
+                        }
                     };
                     (StatusCode::INTERNAL_SERVER_ERROR, Json(response)).into_response()
                 }
             }
         }
         _ => {
-            let response: ApiResponse<Vec<Bill>> = ApiResponse::error("Search query parameter 'q' or 'invoice' is required".to_string());
+            let response: ApiResponse<Vec<Bill>> = ApiResponse::error(
+                "Search query parameter 'q' or 'invoice' is required".to_string(),
+            );
             (StatusCode::BAD_REQUEST, Json(response)).into_response()
         }
     }
@@ -289,9 +320,7 @@ pub async fn search_bills(
 /// # Returns
 /// - 200 OK with count number on success
 /// - 500 Internal Server Error on database error
-pub async fn get_bills_count(
-    State(pool): State<ConnectionPool>,
-) -> impl IntoResponse {
+pub async fn get_bills_count(State(pool): State<ConnectionPool>) -> impl IntoResponse {
     // Create bill service with the connection pool
     let bill_service = BillService::new(pool.pool().clone());
 
@@ -303,10 +332,16 @@ pub async fn get_bills_count(
         }
         Err(api_error) => {
             let response: ApiResponse<i64> = match api_error {
-                ApiError::NotFound(msg) => ApiResponse::error(format!("Count not available: {msg}")),
-                ApiError::InternalServerError(msg) => ApiResponse::error(format!("Failed to get bills count: {msg}")),
+                ApiError::NotFound(msg) => {
+                    ApiResponse::error(format!("Count not available: {msg}"))
+                }
+                ApiError::InternalServerError(msg) => {
+                    ApiResponse::error(format!("Failed to get bills count: {msg}"))
+                }
                 ApiError::BadRequest(msg) => ApiResponse::error(format!("Bad request: {msg}")),
-                ApiError::ServiceUnavailable(msg) => ApiResponse::error(format!("Service unavailable: {msg}")),
+                ApiError::ServiceUnavailable(msg) => {
+                    ApiResponse::error(format!("Service unavailable: {msg}"))
+                }
             };
             (StatusCode::INTERNAL_SERVER_ERROR, Json(response)).into_response()
         }

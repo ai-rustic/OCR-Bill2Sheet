@@ -10,6 +10,11 @@ pub use bill::{Bill, CreateBill};
 pub use gemini_request::GeminiRequest;
 pub use gemini_response::GeminiResponse;
 pub use image_info::{ImageFileInfo, ValidationStatus};
-pub use ocr_error::{ProcessingError as OcrProcessingError, ErrorType as OcrErrorType, ProcessingErrorResponse};
-pub use sse_events::{ProcessingEvent, ValidationErrorCode, ProcessingErrorType, SSEEventEnvelope, ProcessingSession, SessionStatus};
-pub use validation_result::{ValidationResult, ValidationData};
+pub use ocr_error::{
+    ErrorType as OcrErrorType, ProcessingError as OcrProcessingError, ProcessingErrorResponse,
+};
+pub use sse_events::{
+    ProcessingErrorType, ProcessingEvent, ProcessingSession, SSEEventEnvelope, SessionStatus,
+    ValidationErrorCode,
+};
+pub use validation_result::{ValidationData, ValidationResult};
