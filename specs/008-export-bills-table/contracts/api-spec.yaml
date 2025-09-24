@@ -1,0 +1,206 @@
+openapi: 3.0.3
+info:
+  title: Bills Export API
+  description: API endpoint for exporting bills data as CSV or XLSX files
+  version: 1.0.0
+  contact:
+    name: OCR_Bill2Sheet
+    url: https://github.com/dungb/OCR_Bill2Sheet
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /api/bills/export:
+    get:
+      summary: Export bills data as file
+      description: |
+        Exports all bills from the database as either CSV or XLSX format.
+        The response is a file download with appropriate headers for browser handling.
+      operationId: exportBills
+      parameters:
+        - name: format
+          in: query
+          required: true
+          description: Export format - either csv or xlsx
+          schema:
+            type: string
+            enum: [csv, xlsx]
+          example: csv
+      responses:
+        '200':
+          description: Successfully generated export file
+          headers:
+            Content-Type:
+              description: MIME type based on format
+              schema:
+                type: string
+                enum:
+                  - "text/csv; charset=utf-8"
+                  - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            Content-Disposition:
+              description: Attachment filename for download
+              schema:
+                type: string
+                pattern: '^attachment; filename="bills_export_\d{8}_\d{6}\.(csv|xlsx)"$'
+              example: 'attachment; filename="bills_export_20250924_143022.csv"'
+            Cache-Control:
+              description: Cache prevention headers
+              schema:
+                type: string
+                example: "no-cache, no-store, must-revalidate"
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+                description: CSV file with UTF-8 BOM encoding for Vietnamese text
+              example: |
+                ID,Số tờ khai / Form No,Số hóa đơn / Invoice No,Ngày hóa đơn / Invoice Date
+                1,Mẫu 01-GTKT,INV-2024-001,2024-09-15
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+                description: Excel XLSX file with UTF-8 encoding
+        '400':
+          description: Bad request - invalid format parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_format:
+                  summary: Invalid format parameter
+                  value:
+                    error: "Invalid format parameter"
+                    message: "Supported formats: csv, xlsx"
+                    code: "INVALID_FORMAT"
+                missing_format:
+                  summary: Missing format parameter
+                  value:
+                    error: "Missing required parameter"
+                    message: "Format parameter is required"
+                    code: "MISSING_PARAMETER"
+        '500':
+          description: Internal server error - export generation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                database_error:
+                  summary: Database connection failure
+                  value:
+                    error: "Export generation failed"
+                    message: "Database connection error"
+                    code: "DATABASE_ERROR"
+                generation_error:
+                  summary: File generation failure
+                  value:
+                    error: "Export generation failed"
+                    message: "Failed to generate export file"
+                    code: "GENERATION_ERROR"
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+        - code
+      properties:
+        error:
+          type: string
+          description: Human-readable error summary
+        message:
+          type: string
+          description: Detailed error message
+        code:
+          type: string
+          description: Machine-readable error code
+      example:
+        error: "Invalid format parameter"
+        message: "Supported formats: csv, xlsx"
+        code: "INVALID_FORMAT"
+
+    ExportFormat:
+      type: string
+      enum: [csv, xlsx]
+      description: Supported export file formats
+
+    BillData:
+      type: object
+      description: Bill record structure (for documentation purposes)
+      properties:
+        id:
+          type: integer
+          description: Unique bill identifier
+        form_no:
+          type: string
+          nullable: true
+          description: "Số tờ khai - Form number"
+        invoice_no:
+          type: string
+          nullable: true
+          description: "Số hóa đơn - Invoice number"
+        invoice_date:
+          type: string
+          format: date
+          nullable: true
+          description: "Ngày hóa đơn - Invoice date (YYYY-MM-DD)"
+        seller_name:
+          type: string
+          nullable: true
+          description: "Tên người bán - Seller name"
+        seller_tax_code:
+          type: string
+          nullable: true
+          description: "MST người bán - Seller tax code"
+        seller_address:
+          type: string
+          nullable: true
+          description: "Địa chỉ người bán - Seller address"
+        buyer_name:
+          type: string
+          nullable: true
+          description: "Tên người mua - Buyer name"
+        buyer_tax_code:
+          type: string
+          nullable: true
+          description: "MST người mua - Buyer tax code"
+        buyer_address:
+          type: string
+          nullable: true
+          description: "Địa chỉ người mua - Buyer address"
+        total_amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: "Tổng tiền - Total amount (precision 18,2)"
+        tax_amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: "Tiền thuế - Tax amount (precision 18,2)"
+        discount_amount:
+          type: number
+          format: decimal
+          nullable: true
+          description: "Tiền giảm giá - Discount amount (precision 18,2)"
+        vat_rate:
+          type: number
+          format: decimal
+          nullable: true
+          description: "Thuế suất VAT - VAT rate percentage (precision 5,2)"
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Ngày tạo - Creation timestamp"
+
+tags:
+  - name: Export
+    description: Data export operations
