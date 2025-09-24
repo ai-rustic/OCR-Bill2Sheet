@@ -14,6 +14,7 @@ use tracing::{error, warn};
 
 // Public API modules
 pub mod bills;
+pub mod export;
 pub mod health;
 pub mod ocr;
 pub mod response;
@@ -23,6 +24,7 @@ pub use bills::{
     create_bill, delete_bill, get_all_bills, get_bill_by_id, get_bills_count, search_bills,
     update_bill,
 };
+pub use export::export_bills;
 pub use health::{get_health, get_health_detail};
 pub use ocr::{upload_images, upload_images_sse};
 
@@ -117,6 +119,8 @@ pub async fn timeout_middleware(
     // Set different timeouts based on the endpoint
     let timeout_duration = if uri.path().starts_with("/api/ocr") {
         Duration::from_secs(120) // 2 minutes for OCR uploads
+    } else if uri.path().starts_with("/api/bills/export") {
+        Duration::from_secs(60) // 1 minute for export operations (large datasets)
     } else {
         Duration::from_secs(30) // 30 seconds for other endpoints
     };

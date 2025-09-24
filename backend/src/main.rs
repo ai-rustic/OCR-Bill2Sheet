@@ -19,7 +19,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 
 use api::{
-    create_bill, delete_bill, error_handling_middleware, get_all_bills, get_bill_by_id,
+    create_bill, delete_bill, error_handling_middleware, export_bills, get_all_bills, get_bill_by_id,
     get_bills_count, get_health, get_health_detail, not_found_handler, search_bills,
     timeout_middleware, update_bill, upload_images_sse,
 };
@@ -91,6 +91,7 @@ async fn main() {
         .route("/api/bills", get(get_all_bills).post(create_bill))
         .route("/api/bills/search", get(search_bills))
         .route("/api/bills/count", get(get_bills_count))
+        .route("/api/bills/export", get(export_bills))
         .route(
             "/api/bills/{id}",
             get(get_bill_by_id).put(update_bill).delete(delete_bill),

@@ -33,38 +33,38 @@
 ## Path Conventions
 Based on plan.md structure: **Web app** - `backend/src/`, `backend/tests/`
 
-## Phase 3.1: Setup & Dependencies
-- [ ] T001 Add export dependencies to backend/Cargo.toml (csv = "1.3", unicode-bom = "2.0", rust_xlsxwriter = "0.78", tokio-stream = "0.1", futures-util = "0.3")
-- [ ] T002 [P] Configure linting to allow export module: Update backend/.cargo/config.toml or rust-analyzer settings
-- [ ] T003 Create export module structure: backend/src/models/export.rs, backend/src/services/export_service.rs, backend/src/api/export.rs
+## Phase 3.1: Setup & Dependencies ✅ COMPLETED
+- [x] T001 Add export dependencies to backend/Cargo.toml (csv = "1.3", unicode-bom = "2.0", rust_xlsxwriter = "0.78", tokio-stream = "0.1", futures-util = "0.3")
+- [x] T002 [P] Configure linting to allow export module: Update backend/.cargo/config.toml or rust-analyzer settings
+- [x] T003 Create export module structure: backend/src/models/export.rs, backend/src/services/export_service.rs, backend/src/api/export.rs
 
-## Phase 3.2: Data Models (Implementation-First)
-- [ ] T004 [P] ExportFormat enum in backend/src/models/export.rs (CSV, XLSX variants with serde support)
-- [ ] T005 [P] ExportParams struct in backend/src/models/export.rs (format field with validation)
-- [ ] T006 [P] ExportResponse helper in backend/src/models/export.rs (filename, content_type, content methods)
-- [ ] T007 [P] ExportError enum in backend/src/models/export.rs (DatabaseError, SerializationError, IoError variants)
+## Phase 3.2: Data Models (Implementation-First) ✅ COMPLETED
+- [x] T004 [P] ExportFormat enum in backend/src/models/export.rs (CSV, XLSX variants with serde support)
+- [x] T005 [P] ExportParams struct in backend/src/models/export.rs (format field with validation)
+- [x] T006 [P] ExportResponse helper in backend/src/models/export.rs (filename, content_type, content methods)
+- [x] T007 [P] ExportError enum in backend/src/models/export.rs (DatabaseError, SerializationError, IoError variants)
 
-## Phase 3.3: Service Layer
-- [ ] T008 ExportService CSV generation method in backend/src/services/export_service.rs (bills_to_csv with UTF-8 BOM)
-- [ ] T009 ExportService XLSX generation method in backend/src/services/export_service.rs (bills_to_xlsx with formatting)
-- [ ] T010 ExportService database query method in backend/src/services/export_service.rs (get_all_bills with SQLx query_as!)
-- [ ] T011 ExportService main export method in backend/src/services/export_service.rs (handles format routing and error handling)
+## Phase 3.3: Service Layer ✅ COMPLETED
+- [x] T008 ExportService CSV generation method in backend/src/services/export_service.rs (bills_to_csv with UTF-8 BOM)
+- [x] T009 ExportService XLSX generation method in backend/src/services/export_service.rs (bills_to_xlsx with formatting)
+- [x] T010 ExportService database query method in backend/src/services/export_service.rs (get_all_bills with SQLx query_as!)
+- [x] T011 ExportService main export method in backend/src/services/export_service.rs (handles format routing and error handling)
 
 ## Phase 3.4: API Endpoints
-- [ ] T012 GET /api/bills/export handler in backend/src/api/export.rs (validate params, call service, return file response)
-- [ ] T013 HTTP response headers setup in backend/src/api/export.rs (Content-Type, Content-Disposition, Cache-Control)
-- [ ] T014 Error handling middleware integration in backend/src/api/export.rs (400 for invalid format, 500 for errors)
-- [ ] T015 Register export routes in backend/src/main.rs or backend/src/api/mod.rs
+- [x] T012 GET /api/bills/export handler in backend/src/api/export.rs (validate params, call service, return file response)
+- [x] T013 HTTP response headers setup in backend/src/api/export.rs (Content-Type, Content-Disposition, Cache-Control)
+- [x] T014 Error handling middleware integration in backend/src/api/export.rs (400 for invalid format, 500 for errors)
+- [x] T015 Register export routes in backend/src/main.rs or backend/src/api/mod.rs
 
 ## Phase 3.5: Database Integration
-- [ ] T016 Update Bill model imports in backend/src/models/bill.rs (ensure serde::Serialize is available)
-- [ ] T017 Test database connection for export queries using existing connection pool
-- [ ] T018 [P] Add field transformation utilities in backend/src/services/export_service.rs (handle Option<> fields, Vietnamese text)
+- [x] T016 Update Bill model imports in backend/src/models/bill.rs (ensure serde::Serialize is available)
+- [x] T017 Test database connection for export queries using existing connection pool
+- [x] T018 [P] Add field transformation utilities in backend/src/services/export_service.rs (handle Option<> fields, Vietnamese text)
 
 ## Phase 3.6: File Generation & Headers
-- [ ] T019 [P] Implement CSV column headers in backend/src/services/export_service.rs (Vietnamese + English bilingual headers)
-- [ ] T020 [P] Implement XLSX worksheet setup in backend/src/services/export_service.rs (header formatting, auto-fit)
-- [ ] T021 Add timestamp filename generation in backend/src/services/export_service.rs (bills_export_YYYYMMDD_HHMMSS format)
+- [x] T019 [P] Implement CSV column headers in backend/src/services/export_service.rs (Vietnamese + English bilingual headers)
+- [x] T020 [P] Implement XLSX worksheet setup in backend/src/services/export_service.rs (header formatting, auto-fit)
+- [x] T021 Add timestamp filename generation in backend/src/services/export_service.rs (bills_export_YYYYMMDD_HHMMSS format)
 
 ## Phase 3.7: Integration & Polish
 - [ ] T022 End-to-end testing using scenarios from quickstart.md (CSV export, XLSX export, error handling)
