@@ -90,7 +90,7 @@ export function ImagePreview({
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                 <div className="text-center text-gray-500">
-                  <div className="text-2xl mb-1">📁</div>
+                  <div className="text-2xl mb-1">Preview</div>
                   <div className={cn("truncate", config.text)}>
                     {getFileTypeDisplayName(image.fileType)}
                   </div>
@@ -241,7 +241,7 @@ export function ListImagePreview({
           />
         ) : (
           <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-            <span className="text-xl">📁</span>
+            <span className="text-xl">Preview</span>
           </div>
         )}
       </div>
@@ -349,3 +349,5 @@ function ImageModal({
 }
 
 export default ImagePreview
+
+

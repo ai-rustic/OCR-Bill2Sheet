@@ -4,7 +4,7 @@ import * as React from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { AcceptedFileTypes, UploadedImage } from "@/types/upload"
+import type { AcceptedFileTypes, UploadedImage, ImageProcessingState } from "@/types/upload"
 import { DEFAULT_ACCEPTED_TYPES } from "@/types/upload"
 import { useUpload } from "@/hooks/useUpload"
 import { useOcrProcessing } from "@/hooks/useOcrProcessing"
@@ -12,7 +12,6 @@ import { useGlobalDragPrevention } from "@/hooks/useDragAndDrop"
 import { UploadArea } from "./UploadArea"
 import { FileList } from "./FileList"
 import { ErrorAlert } from "./ErrorAlert"
-import { ProcessingStatus } from "./ProcessingStatus"
 import { UploadErrorBoundary, useUploadErrorHandler, useNetworkErrorHandler } from "./ErrorBoundary"
 import { useResponsive, ResponsiveLayout, ResponsiveGrid, DEFAULT_RESPONSIVE_CONFIG } from "./ResponsiveUtils"
 import { formatUploadStats } from "@/utils/fileFormatting"
@@ -91,7 +90,37 @@ export function UploadImageUI({
   const upload = useUpload(acceptedTypes)
   const ocr = useOcrProcessing()
   const [layout, setLayout] = React.useState(initialLayout)
+  const [processingStates, setProcessingStates] = React.useState<Record<string, ImageProcessingState>>({})
+  const fileIndexToImageIdRef = React.useRef<Record<number, string>>({})
+  const lastProcessedEventIndexRef = React.useRef(0)
   const { enablePrevention, disablePrevention } = useGlobalDragPrevention()
+
+  React.useEffect(() => {
+    setProcessingStates((prev) => {
+      if (Object.keys(prev).length === 0) {
+        return prev
+      }
+
+      const validIds = new Set(upload.images.map((img) => img.id))
+      let changed = false
+      const next = { ...prev }
+
+      Object.keys(next).forEach((id) => {
+        if (!validIds.has(id)) {
+          delete next[id]
+          changed = true
+        }
+      })
+
+      Object.entries(fileIndexToImageIdRef.current).forEach(([index, id]) => {
+        if (!validIds.has(id)) {
+          delete fileIndexToImageIdRef.current[Number(index)]
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [upload.images])
 
   // Enhanced error handling
   const errorHandler = useUploadErrorHandler()
@@ -187,6 +216,100 @@ export function UploadImageUI({
     }
     upload.removeImage(fileId)
   }, [upload, onFileRemoved])
+
+  const handleProcessImages = React.useCallback(() => {
+    if (upload.images.length === 0) {
+      return
+    }
+
+    const mapping = upload.images.reduce<Record<number, string>>((acc, img, index) => {
+      acc[index] = img.id
+      return acc
+    }, {})
+
+    fileIndexToImageIdRef.current = mapping
+    lastProcessedEventIndexRef.current = 0
+
+    const initialStates = upload.images.reduce<Record<string, ImageProcessingState>>((acc, img) => {
+      acc[img.id] = 'processing'
+      return acc
+    }, {})
+
+    setProcessingStates(initialStates)
+
+    ocr.processImages(upload.images.map((img) => img.file)).catch((error) => {
+      console.error('Failed to start OCR processing:', error)
+    })
+  }, [ocr, upload.images])
+
+  React.useEffect(() => {
+    if (lastProcessedEventIndexRef.current >= ocr.events.length) {
+      return
+    }
+
+    let changed = false
+
+    setProcessingStates((prev) => {
+      const next = { ...prev }
+
+      for (let index = lastProcessedEventIndexRef.current; index < ocr.events.length; index += 1) {
+        const event = ocr.events[index]
+        const data = event.data as { file_index?: number; fileIndex?: number } | undefined
+        const fileIndex = data?.file_index ?? data?.fileIndex
+
+        if (typeof fileIndex === 'number') {
+          const imageId = fileIndexToImageIdRef.current[fileIndex]
+          if (!imageId) {
+            continue
+          }
+
+          let nextState: ImageProcessingState | undefined
+
+          switch (event.type) {
+            case 'image_received':
+            case 'image_validation_start':
+            case 'image_validation_success':
+            case 'gemini_processing_start':
+              nextState = 'processing'
+              break
+            case 'gemini_processing_success':
+            case 'bill_data_saved':
+              nextState = 'finished'
+              break
+            case 'image_validation_error':
+            case 'gemini_processing_error':
+              nextState = 'error'
+              break
+            default:
+              break
+          }
+
+          if (nextState && next[imageId] !== nextState) {
+            next[imageId] = nextState
+            changed = true
+          }
+        } else if (event.type === 'processing_complete') {
+          Object.keys(next).forEach((id) => {
+            if (next[id] === 'processing') {
+              next[id] = 'finished'
+              changed = true
+            }
+          })
+        } else if (event.type === 'processing_error') {
+          Object.keys(next).forEach((id) => {
+            if (next[id] === 'processing') {
+              next[id] = 'error'
+              changed = true
+            }
+          })
+        }
+      }
+
+      return changed ? next : prev
+    })
+
+    lastProcessedEventIndexRef.current = ocr.events.length
+  }, [ocr.events])
 
   // Monitor upload progress changes
   React.useEffect(() => {
@@ -338,10 +461,7 @@ export function UploadImageUI({
                 {/* Process Images Button */}
                 <Button
                   size="sm"
-                  onClick={() => {
-                    const files = upload.images.map(img => img.file)
-                    ocr.processImages(files)
-                  }}
+                  onClick={handleProcessImages}
                   disabled={ocr.isProcessing || upload.images.length === 0}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
@@ -444,14 +564,6 @@ export function UploadImageUI({
         </CardContent>
       </Card>
 
-      {/* OCR Processing Status */}
-      {(ocr.events.length > 0 || ocr.isProcessing) && (
-        <ProcessingStatus
-          events={ocr.events}
-          isProcessing={ocr.isProcessing}
-        />
-      )}
-
       {/* File list */}
       {showFileList && upload.images.length > 0 && (
         responsive ? (
@@ -462,6 +574,8 @@ export function UploadImageUI({
               onRetry={upload.retryUpload}
               columns={effectiveColumns}
               showProgress={!isMobile || upload.images.length <= 3} // Hide progress on mobile for many files
+              processingStatuses={processingStates}
+              className="col-span-full w-full"
             />
           </ResponsiveGrid>
         ) : (
@@ -471,6 +585,8 @@ export function UploadImageUI({
             onRetry={upload.retryUpload}
             columns={effectiveColumns}
             showProgress={true}
+            processingStatuses={processingStates}
+            className="w-full"
           />
         )
       )}

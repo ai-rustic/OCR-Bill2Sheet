@@ -24,6 +24,8 @@ export interface UploadedImage {
   uploadedAt: Date;
 }
 
+export type ImageProcessingState = 'processing' | 'finished' | 'error';
+
 export interface AcceptedFileTypes {
   mimeTypes: string[];
   extensions: string[];
@@ -111,6 +113,8 @@ export interface FileListProps {
   columns?: number;
   /** Whether to show progress for uploading files */
   showProgress?: boolean;
+  /** Optional processing state per image id */
+  processingStatuses?: Record<string, ImageProcessingState>;
 }
 
 // State Management Interfaces

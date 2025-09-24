@@ -121,6 +121,35 @@ class ApiClient {
   async getBillsCount(): Promise<ApiResponse<number>> {
     return this.request<number>('/api/bills/count');
   }
+
+  async exportBills(format: 'xlsx' | 'csv' = 'xlsx'): Promise<Blob> {
+    const url = `${this.baseUrl}/api/bills/export?format=${encodeURIComponent(format)}`;
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/octet-stream',
+      },
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        try {
+          const data = await response.json();
+          const message =
+            (data as { message?: string; error?: string }).message ??
+            (data as { message?: string; error?: string }).error;
+          throw new Error(message || `HTTP error! status: ${response.status}`);
+        } catch {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.blob();
+  }
+
 }
 
 export const apiClient = new ApiClient();

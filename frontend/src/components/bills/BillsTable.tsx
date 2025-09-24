@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, Edit, Eye, RefreshCw, ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 interface BillsTableProps {
   onEditBill?: (bill: Bill) => void;
@@ -28,6 +28,7 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBills, setTotalBills] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const itemsPerPage = 20;
 
   const fetchBills = async (page: number = 1) => {
@@ -147,6 +148,27 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
   const handlePageClick = (page: number) => {
     if (page !== currentPage) {
       fetchBills(page);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const blob = await apiClient.exportBills('xlsx');
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `bills_${timestamp}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export bills:', err);
+      alert('Export danh sach hoa don that bai. Vui long thu lai.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -288,10 +310,16 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
             </span>
           )}
         </CardTitle>
-        <Button onClick={() => fetchBills(currentPage)} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Làm mới
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleExport} variant="outline" size="sm" disabled={exporting || bills.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            {exporting ? 'Dang xuat...' : 'Export XLSX'}
+          </Button>
+          <Button onClick={() => fetchBills(currentPage)} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Lam moi
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {bills.length === 0 ? (
