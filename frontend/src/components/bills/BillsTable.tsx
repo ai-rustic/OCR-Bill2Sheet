@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit, Eye, RefreshCw } from "lucide-react";
+import { Trash2, Edit, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface BillsTableProps {
   onEditBill?: (bill: Bill) => void;
@@ -25,27 +25,51 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalBills, setTotalBills] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const itemsPerPage = 20;
 
-  const fetchBills = async () => {
+  const fetchBills = async (page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.getAllBills();
+      const response = await apiClient.getAllBills(page, itemsPerPage);
 
       if (response.success && response.data) {
         setBills(response.data);
+        setCurrentPage(page);
+        setHasMore(response.data.length === itemsPerPage);
       } else {
         setError(response.error || 'Failed to fetch bills');
+        setHasMore(false);
       }
     } catch (err) {
       setError('Network error occurred');
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchTotalCount = async () => {
+    try {
+      const response = await apiClient.getBillsCount();
+      if (response.success) {
+        const count = typeof response.data === 'number'
+          ? response.data
+          : Number((response.data as { count?: number } | undefined)?.count ?? 0);
+
+        setTotalBills(Number.isFinite(count) ? count : 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch total count:', err);
+    }
+  };
+
   useEffect(() => {
     fetchBills();
+    fetchTotalCount();
   }, []);
 
   const handleDelete = async (billId: number) => {
@@ -56,6 +80,15 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
         if (response.success) {
           setBills(bills.filter(bill => bill.id !== billId));
           onDeleteBill?.(billId);
+
+          // Refresh total count and adjust page if needed
+          await fetchTotalCount();
+          const newTotalPages = Math.ceil((totalBills - 1) / itemsPerPage);
+          if (currentPage > newTotalPages && newTotalPages > 0) {
+            fetchBills(newTotalPages);
+          } else if (bills.length === 1 && currentPage > 1) {
+            fetchBills(currentPage - 1);
+          }
         } else {
           alert(`Lỗi xóa hóa đơn: ${response.error}`);
         }
@@ -92,6 +125,125 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
     return `${rate}%`;
   };
 
+  const totalPagesFromCount = totalBills > 0 ? Math.ceil(totalBills / itemsPerPage) : 0;
+  const inferredPages = hasMore ? currentPage + 1 : currentPage;
+  const totalPages = Math.max(1, totalPagesFromCount || inferredPages);
+  const totalPagesDisplay = totalBills > 0 ? `${totalPages}` : hasMore ? `${inferredPages}+` : `${totalPages}`;
+  const totalLabel = totalBills > 0 ? totalBills : 'không xác định';
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      fetchBills(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    const canGoNext = totalBills > 0 ? currentPage < totalPages : hasMore;
+    if (canGoNext) {
+      fetchBills(currentPage + 1);
+    }
+  };
+
+  const handlePageClick = (page: number) => {
+    if (page !== currentPage) {
+      fetchBills(page);
+    }
+  };
+
+  const renderPageNumbers = () => {
+    if (totalBills === 0) {
+      const pages = [
+        <Button
+          key={currentPage}
+          variant="default"
+          size="sm"
+          onClick={() => handlePageClick(currentPage)}
+          className="min-w-[2.5rem]"
+        >
+          {currentPage}
+        </Button>
+      ];
+
+      if (hasMore) {
+        const nextPage = currentPage + 1;
+        pages.push(
+          <Button
+            key={nextPage}
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageClick(nextPage)}
+            className="min-w-[2.5rem]"
+          >
+            {nextPage}
+          </Button>
+        );
+      }
+
+      return pages;
+    }
+
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    // Adjust startPage if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      pages.push(
+        <Button
+          key={1}
+          variant={1 === currentPage ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePageClick(1)}
+          className="min-w-[2.5rem]"
+        >
+          1
+        </Button>
+      );
+      if (startPage > 2) {
+        pages.push(<span key="ellipsis1" className="px-2">...</span>);
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <Button
+          key={i}
+          variant={i === currentPage ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePageClick(i)}
+          className="min-w-[2.5rem]"
+        >
+          {i}
+        </Button>
+      );
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pages.push(<span key="ellipsis2" className="px-2">...</span>);
+      }
+      pages.push(
+        <Button
+          key={totalPages}
+          variant={totalPages === currentPage ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePageClick(totalPages)}
+          className="min-w-[2.5rem]"
+        >
+          {totalPages}
+        </Button>
+      );
+    }
+
+    return pages;
+  };
+
   if (loading) {
     return (
       <Card>
@@ -116,7 +268,7 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
         </CardHeader>
         <CardContent className="text-center py-8">
           <div className="text-red-600 mb-4">{error}</div>
-          <Button onClick={fetchBills} variant="outline">
+          <Button onClick={() => fetchBills(1)} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Thử lại
           </Button>
@@ -128,8 +280,15 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Danh sách hóa đơn ({bills.length})</CardTitle>
-        <Button onClick={fetchBills} variant="outline" size="sm">
+        <CardTitle>
+          {`Danh sách hóa đơn (${totalLabel} tổng cộng)`}
+          {bills.length > 0 && (
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              - Trang {currentPage} / {totalPagesDisplay} (hiển thị {bills.length} hóa đơn)
+            </span>
+          )}
+        </CardTitle>
+        <Button onClick={() => fetchBills(currentPage)} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
           Làm mới
         </Button>
@@ -223,6 +382,53 @@ export function BillsTable({ onEditBill, onViewBill, onDeleteBill }: BillsTableP
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {bills.length > 0 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Trước
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {renderPageNumbers()}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={totalBills > 0 ? currentPage === totalPages : !hasMore}
+              >
+                Sau
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="text-sm text-gray-500">
+              {(() => {
+                const rangeStart = ((currentPage - 1) * itemsPerPage) + 1;
+                const inferredTotal = totalBills > 0
+                  ? totalBills
+                  : currentPage * itemsPerPage + (hasMore ? itemsPerPage : 0);
+                const rangeEnd = Math.min(rangeStart + bills.length - 1, inferredTotal);
+
+                return (
+                  <span>
+                    Hiển thị {rangeStart}-{rangeEnd} của {totalLabel} hóa đơn
+                  </span>
+                );
+              })()}
+            </div>
           </div>
         )}
       </CardContent>

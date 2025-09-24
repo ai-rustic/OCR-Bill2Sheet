@@ -78,8 +78,15 @@ class ApiClient {
   }
 
   // Bill management endpoints
-  async getAllBills(): Promise<ApiResponse<Bill[]>> {
-    return this.request<Bill[]>('/api/bills');
+  async getAllBills(page?: number, limit?: number): Promise<ApiResponse<Bill[]>> {
+    const params = new URLSearchParams();
+    if (page !== undefined) params.append('page', page.toString());
+    if (limit !== undefined) params.append('limit', limit.toString());
+
+    const queryString = params.toString();
+    const endpoint = queryString ? `/api/bills?${queryString}` : '/api/bills';
+
+    return this.request<Bill[]>(endpoint);
   }
 
   async getBillById(id: number): Promise<ApiResponse<Bill>> {
@@ -111,8 +118,8 @@ class ApiClient {
     return this.request<Bill[]>(`/api/bills/search?${params}`);
   }
 
-  async getBillsCount(): Promise<ApiResponse<{ count: number }>> {
-    return this.request<{ count: number }>('/api/bills/count');
+  async getBillsCount(): Promise<ApiResponse<number>> {
+    return this.request<number>('/api/bills/count');
   }
 }
 
