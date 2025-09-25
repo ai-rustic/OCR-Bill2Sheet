@@ -14,7 +14,18 @@ class Settings(BaseSettings):
     postgres_password: str = Field(default="postgres", alias="POSTGRES_PASSWORD")
     database_url: str | None = Field(default=None, alias="DATABASE_URL")
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-1.5-flash-latest", alias="GEMINI_MODEL")
+    gemini_api_url: str = Field(
+        default="https://generativelanguage.googleapis.com/v1beta/models",
+        alias="GEMINI_API_URL",
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     @property
     def sqlalchemy_database_uri(self) -> str:

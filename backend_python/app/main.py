@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from .database import DatabaseSessionDep
+from routers import bills_router, ocr_router
 
 app = FastAPI(title="OCR Bill2Sheet API")
 
@@ -13,6 +14,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(bills_router)
+app.include_router(ocr_router)
 
 
 @app.get("/", tags=["root"])
