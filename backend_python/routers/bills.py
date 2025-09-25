@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 
-from fastapi import APIRouter, Query, status
-from fastapi.responses import JSONResponse
+from datetime import datetime
+from decimal import Decimal
+from io import BytesIO
+
+from fastapi import APIRouter, Query, Response, status
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
+
+from openpyxl import Workbook
 
 from app.database import DatabaseSessionDep
 from models import Bill
@@ -42,6 +48,78 @@ async def list_bills(
     bills = result.scalars().all()
     data = [_bill_to_schema(bill) for bill in bills]
     return ApiResponse.success_response(data)
+
+
+@router.get("/export", response_class=StreamingResponse)
+async def export_bills(
+    session: DatabaseSessionDep,
+    format: str = Query("xlsx"),
+) -> Response:
+    export_format = format.lower()
+    if export_format != "xlsx":
+        return _error_response(
+            "Only 'xlsx' export format is supported",
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        result = await session.execute(select(Bill).order_by(Bill.id.asc()))
+    except SQLAlchemyError as exc:
+        return _error_response(
+            f"Failed to export bills: {exc}",
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    bills = result.scalars().all()
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Bills"
+
+    columns = [
+        ("ID", "id"),
+        ("Form No", "form_no"),
+        ("Serial No", "serial_no"),
+        ("Invoice No", "invoice_no"),
+        ("Issued Date", "issued_date"),
+        ("Seller Name", "seller_name"),
+        ("Seller Tax Code", "seller_tax_code"),
+        ("Item Name", "item_name"),
+        ("Unit", "unit"),
+        ("Quantity", "quantity"),
+        ("Unit Price", "unit_price"),
+        ("Total Amount", "total_amount"),
+        ("VAT Rate", "vat_rate"),
+        ("VAT Amount", "vat_amount"),
+    ]
+
+    sheet.append([header for header, _ in columns])
+
+    for bill in bills:
+        row = []
+        for _, attr in columns:
+            value = getattr(bill, attr)
+            if isinstance(value, Decimal):
+                value = float(value)
+            row.append(value)
+        sheet.append(row)
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    filename = f"bills-{timestamp}.xlsx"
+
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}",
+    }
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
+    )
 
 
 @router.get("/{bill_id}", response_model=ApiResponse[BillRead])
@@ -194,3 +272,4 @@ async def count_bills(session: DatabaseSessionDep) -> ApiResponse[int] | JSONRes
 
     count = result.scalar_one()
     return ApiResponse.success_response(int(count))
+
