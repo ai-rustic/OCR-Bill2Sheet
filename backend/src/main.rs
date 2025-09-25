@@ -16,6 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::ServeDir;
 use tracing::{error, info, warn};
 
 use api::{
@@ -98,7 +99,7 @@ async fn main() {
         )
         // OCR endpoints
         .route("/api/ocr", post(upload_images_sse))
-        .fallback(not_found_handler)
+        .fallback_service(ServeDir::new("../frontend/out").append_index_html_on_directories(true))
         .layer(DefaultBodyLimit::max(50 * 1024 * 1024)) // 50MB total request limit
         .layer(
             CorsLayer::new()
