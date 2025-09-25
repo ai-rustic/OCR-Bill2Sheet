@@ -23,6 +23,7 @@ use crate::{
         image_validation::{validate_file_size, validate_image_format},
     },
     state::AppState,
+    utils::image_utils::resize_image_default,
 };
 
 pub async fn upload_images_sse(
@@ -153,9 +154,28 @@ async fn process_upload_with_events(
                     timestamp: Utc::now(),
                 });
 
-                // Process with Gemini after successful validation
+                // Resize image pixel dimensions before processing with Gemini
+                info!("Resizing image pixel dimensions to 40% for file index {}", file_index);
+                let resized_data = match resize_image_default(data) {
+                    Ok(resized) => {
+                        let size_reduction = ((data.len() - resized.len()) as f32 / data.len() as f32) * 100.0;
+                        info!(
+                            "Image pixel dimensions resized: {} bytes -> {} bytes (file size reduced by {:.1}%)",
+                            data.len(),
+                            resized.len(),
+                            size_reduction
+                        );
+                        resized
+                    }
+                    Err(e) => {
+                        warn!("Failed to resize image pixel dimensions for file index {}: {}. Using original image.", file_index, e);
+                        data.to_vec()
+                    }
+                };
+
+                // Process with Gemini after successful validation and resizing
                 match process_with_gemini(
-                    data,
+                    &resized_data,
                     file_index,
                     file_name.clone(),
                     broadcaster.clone(),

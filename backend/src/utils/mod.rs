@@ -6,3 +6,4 @@
 
 pub mod database;
 pub mod env;
+pub mod image_utils;
