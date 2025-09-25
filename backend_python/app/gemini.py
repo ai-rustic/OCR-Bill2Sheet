@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
+from collections.abc import Iterator
+from itertools import cycle
 from typing import Any
 
 import httpx
@@ -12,6 +15,10 @@ from .config import get_settings
 class GeminiError(RuntimeError):
     """Raised when the Gemini API request or response fails."""
 
+# Rotate through configured Gemini API keys safely across tasks
+_API_KEY_ITERATOR: Iterator[str] | None = None
+_API_KEY_CACHE: tuple[str, ...] | None = None
+_API_KEY_LOCK = asyncio.Lock()
 
 _PROMPT = (
     "You are an OCR assistant that extracts structured bill data from an image. "
@@ -99,6 +106,19 @@ def _prepare_image_part(image_bytes: bytes, mime_type: str) -> dict[str, Any]:
     encoded = base64.b64encode(image_bytes).decode("utf-8")
     return {"inline_data": {"mime_type": mime_type, "data": encoded}}
 
+async def _get_next_gemini_api_key(settings) -> str:
+    keys = settings.resolved_gemini_api_keys
+    if not keys:
+        raise GeminiError("Gemini API key is not configured")
+
+    key_tuple = tuple(keys)
+    global _API_KEY_ITERATOR, _API_KEY_CACHE
+    async with _API_KEY_LOCK:
+        if _API_KEY_ITERATOR is None or _API_KEY_CACHE != key_tuple:
+            _API_KEY_ITERATOR = cycle(key_tuple)
+            _API_KEY_CACHE = key_tuple
+        return next(_API_KEY_ITERATOR)
+
 
 async def extract_bill_items(
     client: httpx.AsyncClient,
@@ -107,8 +127,7 @@ async def extract_bill_items(
 ) -> dict[str, Any]:
     settings = get_settings()
 
-    if not settings.gemini_api_key:
-        raise GeminiError("Gemini API key is not configured")
+    api_key = await _get_next_gemini_api_key(settings)
 
     url = f"{settings.gemini_api_url}/{settings.gemini_model}:generateContent"
 
@@ -128,7 +147,7 @@ async def extract_bill_items(
         },
     }
 
-    response = await client.post(url, params={"key": settings.gemini_api_key}, json=payload)
+    response = await client.post(url, params={"key": api_key}, json=payload)
 
     if response.status_code >= 400:
         detail = response.text
