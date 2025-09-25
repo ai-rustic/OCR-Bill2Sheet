@@ -14,49 +14,63 @@ class GeminiError(RuntimeError):
 
 
 _PROMPT = (
-    "You are an OCR assistant that extracts structured bill line items from an image. "
-    "Respond with a JSON array. Each element must contain these keys: form_no, serial_no, "
-    "invoice_no, issued_date (YYYY-MM-DD), seller_name, seller_tax_code, item_name, unit, "
-    "quantity, unit_price, total_amount, vat_rate, vat_amount."
-    "Use null for missing data. Return only JSON without markdown or additional text."
+    "You are an OCR assistant that extracts structured bill data from an image. "
+    "Return a JSON object with two keys: 'invoice' and 'items'. "
+    "'invoice' describes invoice-level metadata with these keys: form_no, serial_no, invoice_no, issued_date (YYYY-MM-DD), "
+    "seller_name, seller_tax_code. "
+    "'items' is an array where every element contains: item_name, unit, quantity, unit_price, total_amount, vat_rate, vat_amount. "
+    "Use null for any value that cannot be determined. Respond with JSON only (no markdown, no code fences)."
 )
 
 
 _RESPONSE_SCHEMA = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "form_no": {"type": "string"},
-            "serial_no": {"type": "string"},
-            "invoice_no": {"type": "string"},
-            "issued_date": {"type": "string"},
-            "seller_name": {"type": "string"},
-            "seller_tax_code": {"type": "string"},
-            "item_name": {"type": "string"},
-            "unit": {"type": "string"},
-            "quantity": {"type": "number"},
-            "unit_price": {"type": "number"},
-            "total_amount": {"type": "number"},
-            "vat_rate": {"type": "number"},
-            "vat_amount": {"type": "number"},
+    "type": "object",
+    "properties": {
+        "invoice": {
+            "type": "object",
+            "properties": {
+                "form_no": {"type": "string"},
+                "serial_no": {"type": "string"},
+                "invoice_no": {"type": "string"},
+                "issued_date": {"type": "string", "format": "date"},
+                "seller_name": {"type": "string"},
+                "seller_tax_code": {"type": "string"},
+            },
+            "required": [
+                "form_no",
+                "serial_no",
+                "invoice_no",
+                "issued_date",
+                "seller_name",
+                "seller_tax_code",
+            ],
         },
-        "required": [
-            "form_no",
-            "serial_no",
-            "invoice_no",
-            "issued_date",
-            "seller_name",
-            "seller_tax_code",
-            "item_name",
-            "unit",
-            "quantity",
-            "unit_price",
-            "total_amount",
-            "vat_rate",
-            "vat_amount",
-        ],
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_name": {"type": "string"},
+                    "unit": {"type": "string"},
+                    "quantity": {"type": "number"},
+                    "unit_price": {"type": "number"},
+                    "total_amount": {"type": "number"},
+                    "vat_rate": {"type": "number"},
+                    "vat_amount": {"type": "number"},
+                },
+                "required": [
+                    "item_name",
+                    "unit",
+                    "quantity",
+                    "unit_price",
+                    "total_amount",
+                    "vat_rate",
+                    "vat_amount",
+                ],
+            },
+        },
     },
+    "required": ["invoice", "items"],
 }
 
 
@@ -90,7 +104,7 @@ async def extract_bill_items(
     client: httpx.AsyncClient,
     image_bytes: bytes,
     mime_type: str,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     settings = get_settings()
 
     if not settings.gemini_api_key:
@@ -128,7 +142,14 @@ async def extract_bill_items(
     except json.JSONDecodeError as exc:
         raise GeminiError(f"Gemini response is not valid JSON: {exc}") from exc
 
-    if not isinstance(parsed, list):
-        raise GeminiError("Gemini response JSON must be a list")
+    if not isinstance(parsed, dict):
+        raise GeminiError("Gemini response JSON must be an object")
+
+    invoice = parsed.get("invoice")
+    items = parsed.get("items")
+    if not isinstance(invoice, dict):
+        raise GeminiError("Gemini response is missing 'invoice' object")
+    if not isinstance(items, list):
+        raise GeminiError("Gemini response 'items' must be a list")
 
     return parsed

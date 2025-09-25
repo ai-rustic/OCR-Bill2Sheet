@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any, AsyncIterator, NamedTuple
 
 import httpx
@@ -21,6 +22,52 @@ class _BufferedImage(NamedTuple):
     content: bytes
 
 
+_DATE_FORMATS = (
+    "%Y-%m-%d",
+    "%d/%m/%Y",
+    "%d-%m-%Y",
+    "%Y/%m/%d",
+    "%m/%d/%Y",
+    "%m-%d-%Y",
+)
+
+
+_INVOICE_FIELDS = (
+    "form_no",
+    "serial_no",
+    "invoice_no",
+    "issued_date",
+    "seller_name",
+    "seller_tax_code",
+)
+
+
+def _normalize_issued_date(target: dict[str, Any]) -> None:
+    issued = target.get("issued_date")
+    if isinstance(issued, str):
+        value = issued.strip()
+        if value:
+            for fmt in _DATE_FORMATS:
+                try:
+                    target["issued_date"] = datetime.strptime(value, fmt).date().isoformat()
+                    return
+                except ValueError:
+                    continue
+            target["issued_date"] = None
+
+
+def _normalize_invoice(invoice: dict[str, Any]) -> dict[str, Any]:
+    normalized = {field: invoice.get(field) for field in _INVOICE_FIELDS}
+    _normalize_issued_date(normalized)
+    return normalized
+
+
+def _merge_invoice_item(invoice: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+    merged = {**invoice, **item}
+    _normalize_issued_date(merged)
+    return merged
+
+
 router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
 
@@ -31,13 +78,13 @@ def _sse_event(event: str, data: dict[str, Any]) -> dict[str, str]:
 @router.post("", response_class=EventSourceResponse, status_code=status.HTTP_202_ACCEPTED)
 async def process_ocr_images(
     session: DatabaseSessionDep,
-    images: list[UploadFile] = File(..., description="List of bill images to process"),
+    files: list[UploadFile] = File(..., description="List of bill images to process"),
 ) -> EventSourceResponse:
-    if not images:
+    if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No images provided")
 
     buffered_files: list[_BufferedImage] = []
-    for upload in images:
+    for upload in files:
         filename = upload.filename or "unknown"
         mime_type = upload.content_type or "image/jpeg"
         try:
@@ -70,14 +117,24 @@ async def process_ocr_images(
                         {"image_index": index, "filename": buffered.filename},
                     )
 
-                    raw_items = await extract_bill_items(client, buffered.content, buffered.mime_type)
+                    raw_payload = await extract_bill_items(client, buffered.content, buffered.mime_type)
 
+                    invoice_raw = raw_payload.get("invoice")
+                    items_raw = raw_payload.get("items")
+                    if not isinstance(invoice_raw, dict):
+                        raise GeminiError("Gemini invoice payload is invalid")
+                    if not isinstance(items_raw, list):
+                        raise GeminiError("Gemini items payload must be a list")
+
+                    invoice_data = _normalize_invoice(invoice_raw)
                     bill_records: list[Bill] = []
-                    for item in raw_items:
+
+                    for item in items_raw:
                         if not isinstance(item, dict):
                             raise GeminiError("Gemini response item is not an object")
+                        merged_item = _merge_invoice_item(invoice_data, item)
                         try:
-                            payload = BillCreate.model_validate(item)
+                            payload = BillCreate.model_validate(merged_item)
                         except ValidationError as exc:
                             raise GeminiError(
                                 f"Gemini response item validation failed: {exc.errors()}"
@@ -107,6 +164,7 @@ async def process_ocr_images(
                         {
                             "image_index": index,
                             "filename": buffered.filename,
+                            "invoice": invoice_data,
                             "items": items_payload,
                         },
                     )
@@ -132,6 +190,9 @@ async def process_ocr_images(
                         },
                     )
 
-            yield _sse_event("finished", {"processed": len(buffered_files)})
+            yield _sse_event(
+                "finished",
+                {"processed": len(buffered_files)},
+            )
 
     return EventSourceResponse(event_stream())
