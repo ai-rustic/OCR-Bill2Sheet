@@ -14,6 +14,21 @@ interface ProcessingStatusProps {
   className?: string;
 }
 
+const getString = (data: OcrEvent['data'], key: string): string | undefined => {
+  const value = data[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
+const getNumber = (data: OcrEvent['data'], key: string): number | undefined => {
+  const value = data[key];
+  return typeof value === 'number' ? value : undefined;
+}
+
+const getRecord = (data: OcrEvent['data'], key: string): OcrEvent['data'] | undefined => {
+  const value = data[key];
+  return typeof value === 'object' && value !== null ? (value as OcrEvent['data']) : undefined;
+}
+
 /**
  * Component to display OCR processing status and events
  */
@@ -66,34 +81,62 @@ export function ProcessingStatus({ events, isProcessing, className }: Processing
 
   const formatEventMessage = (event: OcrEvent) => {
     const { type, data } = event;
+    const fileIndex = getNumber(data, 'file_index');
+    const fileLabel = getString(data, 'file_name') ?? (typeof fileIndex === 'number' ? `File ${fileIndex + 1}` : 'File');
 
     switch (type) {
-      case 'upload_started':
-        return `Started processing ${data.total_files} files`;
-      case 'image_received':
-        return `Received: ${data.file_name || `File ${data.file_index + 1}`} (${Math.round(data.size_bytes / 1024)}KB)`;
+      case 'upload_started': {
+        const totalFiles = getNumber(data, 'total_files') ?? 0
+        return `Started processing ${totalFiles} files`
+      }
+      case 'image_received': {
+        const sizeBytes = getNumber(data, 'size_bytes')
+        const sizeText = typeof sizeBytes === 'number' ? `${Math.round(sizeBytes / 1024)}KB` : 'Unknown size'
+        return `Received: ${fileLabel} (${sizeText})`
+      }
       case 'image_validation_start':
-        return `Validating: ${data.file_name || `File ${data.file_index + 1}`}`;
-      case 'image_validation_success':
-        return `✓ Validated: ${data.file_info?.file_name || `File ${data.file_index + 1}`}`;
-      case 'image_validation_error':
-        return `✗ Validation failed: ${data.error_message}`;
-      case 'all_images_validated':
-        return `All images validated: ${data.successful_count}/${data.total_processed} successful`;
+        return `Validating: ${fileLabel}`
+      case 'image_validation_success': {
+        const fileInfo = getRecord(data, 'file_info')
+        const infoName = fileInfo ? getString(fileInfo, 'file_name') : undefined
+        return `Validated: ${infoName ?? fileLabel}`
+      }
+      case 'image_validation_error': {
+        const errorMessage = getString(data, 'error_message') ?? 'Validation error'
+        return `Validation failed: ${errorMessage}`
+      }
+      case 'all_images_validated': {
+        const successfulCount = getNumber(data, 'successful_count') ?? 0
+        const totalProcessed = getNumber(data, 'total_processed') ?? 0
+        return `All images validated: ${successfulCount}/${totalProcessed} successful`
+      }
       case 'gemini_processing_start':
-        return `🤖 Starting AI analysis: ${data.file_name || `File ${data.file_index + 1}`}`;
+        return `Starting AI analysis: ${fileLabel}`
       case 'gemini_processing_success':
-        return `✓ AI analysis completed: ${data.file_name || `File ${data.file_index + 1}`}`;
-      case 'gemini_processing_error':
-        return `✗ AI analysis failed: ${data.error_message}`;
-      case 'bill_data_saved':
-        return `💾 Bill data saved (ID: ${data.bill_id})`;
-      case 'processing_complete':
-        return `✅ Processing complete! ${data.successful_files}/${data.total_files} files processed successfully in ${data.duration_ms}ms`;
-      case 'processing_error':
-        return `❌ Processing failed: ${data.error_message}`;
+        return `AI analysis completed: ${fileLabel}`
+      case 'gemini_processing_error': {
+        const errorMessage = getString(data, 'error_message') ?? 'Unknown AI error'
+        return `AI analysis failed: ${errorMessage}`
+      }
+      case 'bill_data_saved': {
+        const billIdString = getString(data, 'bill_id')
+        const billIdNumber = getNumber(data, 'bill_id')
+        const billId = billIdString ?? (typeof billIdNumber === 'number' ? billIdNumber.toString() : 'unknown')
+        return `Bill data saved (ID: ${billId})`
+      }
+      case 'processing_complete': {
+        const successfulFiles = getNumber(data, 'successful_files') ?? 0
+        const totalFiles = getNumber(data, 'total_files') ?? 0
+        const duration = getNumber(data, 'duration_ms')
+        const durationText = typeof duration === 'number' ? `${duration}ms` : 'unknown duration'
+        return `Processing complete! ${successfulFiles}/${totalFiles} files processed successfully in ${durationText}`
+      }
+      case 'processing_error': {
+        const errorMessage = getString(data, 'error_message') ?? 'Unknown error'
+        return `Processing failed: ${errorMessage}`
+      }
       default:
-        return JSON.stringify(data);
+        return JSON.stringify(data)
     }
   };
 
@@ -101,7 +144,8 @@ export function ProcessingStatus({ events, isProcessing, className }: Processing
     ['processing_complete', 'processing_error'].includes(e.type)
   ).length;
 
-  const totalFiles = events.find(e => e.type === 'upload_started')?.data?.total_files || 0;
+  const uploadStartedEvent = events.find(e => e.type === 'upload_started');
+  const totalFiles = uploadStartedEvent ? getNumber(uploadStartedEvent.data, 'total_files') ?? 0 : 0;
   const processedFiles = events.filter(e =>
     ['image_validation_success', 'image_validation_error'].includes(e.type)
   ).length;
@@ -137,32 +181,36 @@ export function ProcessingStatus({ events, isProcessing, className }: Processing
 
       <CardContent className="pt-0">
         <div className="space-y-2 max-h-64 overflow-y-auto">
-          {events.map((event, index) => (
-            <div
-              key={index}
-              className={cn(
-                "flex items-start gap-3 p-3 rounded-lg border text-sm",
-                getEventColor(event.type)
-              )}
-            >
-              <div className="flex-shrink-0 mt-0.5">
-                {getEventIcon(event.type)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 mb-1">
-                  {event.type.replace(/([A-Z])/g, ' $1').trim()}
-                </div>
-                <div className="text-gray-700 break-words">
-                  {formatEventMessage(event)}
-                </div>
-                {event.data.timestamp && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    {new Date(event.data.timestamp).toLocaleTimeString()}
-                  </div>
+          {events.map((event, index) => {
+            const timestamp = getString(event.data, 'timestamp');
+
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "flex items-start gap-3 p-3 rounded-lg border text-sm",
+                  getEventColor(event.type)
                 )}
+              >
+                <div className="flex-shrink-0 mt-0.5">
+                  {getEventIcon(event.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900 mb-1">
+                    {event.type.replace(/([A-Z])/g, ' $1').trim()}
+                  </div>
+                  <div className="text-gray-700 break-words">
+                    {formatEventMessage(event)}
+                  </div>
+                  {timestamp && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(timestamp).toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

@@ -226,21 +226,33 @@ export function useUploadTheme() {
 /**
  * Themed component wrapper
  */
+type WithUploadThemeProps<P extends object> = P & { theme?: UploadTheme }
+
 export function withUploadTheme<P extends object>(
   Component: React.ComponentType<P>,
   defaultTheme?: UploadTheme
 ) {
-  return React.forwardRef<any, P & { theme?: UploadTheme }>((props, ref) => {
-    const { theme: propTheme, ...otherProps } = props
-    const contextTheme = useUploadTheme()
-    const effectiveTheme = propTheme || defaultTheme || contextTheme
+  type ComponentProps = React.ComponentPropsWithRef<typeof Component>
+  type RefType = ComponentProps extends { ref?: React.Ref<infer R> } ? R : unknown
 
-    return (
-      <UploadThemeProvider theme={effectiveTheme}>
-        <Component {...(otherProps as P)} ref={ref} />
-      </UploadThemeProvider>
-    )
-  })
+  const ThemedComponent = React.forwardRef<RefType, WithUploadThemeProps<P>>(
+    (props, ref) => {
+      const { theme: propTheme, ...otherProps } = props
+      const contextTheme = useUploadTheme()
+      const effectiveTheme = propTheme ?? defaultTheme ?? contextTheme
+
+      return (
+        <UploadThemeProvider theme={effectiveTheme}>
+          <Component {...(otherProps as P)} ref={ref} />
+        </UploadThemeProvider>
+      )
+    }
+  )
+
+  const componentName = Component.displayName ?? Component.name ?? "Component"
+  ThemedComponent.displayName = `WithUploadTheme(${componentName})`
+
+  return ThemedComponent
 }
 
 /**
@@ -394,6 +406,9 @@ export const ThemedComponents = {
     )
   })
 }
+
+ThemedComponents.Container.displayName = "UploadThemeContainer"
+ThemedComponents.StatusIndicator.displayName = "UploadThemeStatusIndicator"
 
 export default {
   UploadThemeProvider,

@@ -231,7 +231,7 @@ export function useErrorReporting(options?: {
   }, [onError])
 
   const withErrorHandling = React.useCallback(
-    <T extends any[], R>(
+    <T extends unknown[], R>(
       fn: (...args: T) => R | Promise<R>,
       context: string
     ) => {

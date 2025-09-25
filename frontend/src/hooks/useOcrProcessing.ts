@@ -1,9 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_ENDPOINTS } from '@/config/api';
+type OcrEventData = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is OcrEventData =>
+  typeof value === 'object' && value !== null;
+
 
 export interface OcrEvent {
   type: string;
-  data: any;
+  data: OcrEventData;
 }
 
 export interface UseOcrProcessingReturn {
@@ -16,17 +21,17 @@ export interface UseOcrProcessingReturn {
 /**
  * Helper function to extract event type from data structure
  */
-function getEventTypeFromData(data: any): string | null {
+function getEventTypeFromData(data: OcrEventData): string | null {
   // Check if data has known field patterns from backend SSE events
-  if (data.session_id && data.total_files !== undefined) return 'upload_started';
-  if (data.file_index !== undefined && data.file_name && data.size_bytes) return 'image_received';
-  if (data.file_index !== undefined && data.file_info) return 'image_validation_success';
-  if (data.file_index !== undefined && data.error_code) return 'image_validation_error';
-  if (data.total_processed !== undefined) return 'all_images_validated';
-  if (data.extracted_data) return 'gemini_processing_success';
-  if (data.bill_id) return 'bill_data_saved';
-  if (data.successful_files !== undefined && data.duration_ms) return 'processing_complete';
-  if (data.error_type) return 'processing_error';
+  if ('session_id' in data && 'total_files' in data) return 'upload_started';
+  if ('file_index' in data && 'file_name' in data && 'size_bytes' in data) return 'image_received';
+  if ('file_index' in data && 'file_info' in data) return 'image_validation_success';
+  if ('file_index' in data && 'error_code' in data) return 'image_validation_error';
+  if ('total_processed' in data) return 'all_images_validated';
+  if ('extracted_data' in data) return 'gemini_processing_success';
+  if ('bill_id' in data) return 'bill_data_saved';
+  if ('successful_files' in data && 'duration_ms' in data) return 'processing_complete';
+  if ('error_type' in data) return 'processing_error';
   return null;
 }
 
@@ -133,10 +138,23 @@ export function useOcrProcessing(): UseOcrProcessingReturn {
               const eventData = line.substring(6).trim();
 
               try {
-                const parsedData = JSON.parse(eventData);
+                const rawData = JSON.parse(eventData) as unknown;
+
+                if (!isRecord(rawData)) {
+                  continue;
+                }
+
+                const parsedData = rawData;
+                const parsedType =
+                  typeof parsedData.type === 'string' ? parsedData.type : null;
+                const eventType =
+                  currentEventType ||
+                  parsedType ||
+                  getEventTypeFromData(parsedData) ||
+                  'unknown';
 
                 const event: OcrEvent = {
-                  type: currentEventType || parsedData.type || getEventTypeFromData(parsedData) || 'unknown',
+                  type: eventType,
                   data: parsedData
                 };
 

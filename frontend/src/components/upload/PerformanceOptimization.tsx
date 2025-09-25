@@ -28,7 +28,7 @@ export function useDebounce<T>(value: T, delay: number): T {
 /**
  * Throttled callback hook for limiting function execution rate
  */
-export function useThrottle<T extends (...args: any[]) => void>(
+export function useThrottle<T extends (...args: unknown[]) => void>(
   callback: T,
   delay: number
 ): T {
@@ -258,11 +258,11 @@ LazyImage.displayName = 'LazyImage'
 /**
  * Memoized file size calculator
  */
-export const useMemoizedFileSize = React.memo((files: File[]) => {
+export function useMemoizedFileSize(files: File[]) {
   return React.useMemo(() => {
     return files.reduce((total, file) => total + file.size, 0)
   }, [files])
-})
+}
 
 /**
  * Optimized upload progress tracker
@@ -305,6 +305,14 @@ export function useOptimizedProgressTracker() {
 /**
  * Memory usage monitor hook
  */
+type PerformanceWithMemory = Performance & {
+  memory: {
+    usedJSHeapSize: number
+    totalJSHeapSize: number
+    jsHeapSizeLimit: number
+  }
+}
+
 export function useMemoryMonitor() {
   const [memoryUsage, setMemoryUsage] = React.useState<{
     used: number
@@ -315,7 +323,7 @@ export function useMemoryMonitor() {
   React.useEffect(() => {
     const updateMemoryUsage = () => {
       if ('memory' in performance) {
-        const memory = (performance as any).memory
+        const memory = (performance as PerformanceWithMemory).memory
         setMemoryUsage({
           used: memory.usedJSHeapSize,
           total: memory.totalJSHeapSize,
