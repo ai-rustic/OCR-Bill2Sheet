@@ -266,16 +266,20 @@ export function UploadImageUI({
           let nextState: ImageProcessingState | undefined
 
           switch (event.type) {
+            case 'image_started':
             case 'image_received':
+            case 'image_processing':
             case 'image_validation_start':
             case 'image_validation_success':
             case 'gemini_processing_start':
               nextState = 'processing'
               break
+            case 'image_completed':
             case 'gemini_processing_success':
             case 'bill_data_saved':
               nextState = 'finished'
               break
+            case 'image_failed':
             case 'image_validation_error':
             case 'gemini_processing_error':
               nextState = 'error'
@@ -288,16 +292,28 @@ export function UploadImageUI({
             next[imageId] = nextState
             changed = true
           }
-        } else if (event.type === 'processing_complete') {
-          Object.keys(next).forEach((id) => {
-            if (next[id] === 'processing') {
+        } else if (event.type === 'processing_complete' || event.type === 'finished') {
+          const targetIds = new Set([
+            ...Object.keys(next),
+            ...Object.values(fileIndexToImageIdRef.current).filter(Boolean),
+          ])
+
+          targetIds.forEach((id) => {
+            if (!id) return
+            if (next[id] !== 'error' && next[id] !== 'finished') {
               next[id] = 'finished'
               changed = true
             }
           })
         } else if (event.type === 'processing_error') {
-          Object.keys(next).forEach((id) => {
-            if (next[id] === 'processing') {
+          const targetIds = new Set([
+            ...Object.keys(next),
+            ...Object.values(fileIndexToImageIdRef.current).filter(Boolean),
+          ])
+
+          targetIds.forEach((id) => {
+            if (!id) return
+            if (next[id] !== 'error') {
               next[id] = 'error'
               changed = true
             }
@@ -310,6 +326,27 @@ export function UploadImageUI({
 
     lastProcessedEventIndexRef.current = ocr.events.length
   }, [ocr.events])
+
+  React.useEffect(() => {
+    if (ocr.isProcessing) {
+      return
+    }
+
+    setProcessingStates((prev) => {
+      let changed = false
+      const next = { ...prev }
+      const hasGlobalError = ocr.events.some(event => event.type === 'processing_error')
+
+      Object.entries(next).forEach(([id, state]) => {
+        if (state === 'processing') {
+          next[id] = hasGlobalError ? 'error' : 'finished'
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [ocr.isProcessing, ocr.events])
 
   // Monitor upload progress changes
   React.useEffect(() => {

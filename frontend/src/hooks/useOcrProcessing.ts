@@ -22,7 +22,14 @@ export interface UseOcrProcessingReturn {
  * Helper function to extract event type from data structure
  */
 function getEventTypeFromData(data: OcrEventData): string | null {
-  // Check if data has known field patterns from backend SSE events
+  const hasImageIndex = typeof data['image_index'] === 'number';
+
+  if (typeof data['processed'] === 'number') return 'finished';
+  if (hasImageIndex && Array.isArray(data['items'])) return 'image_completed';
+  if (hasImageIndex && typeof data['message'] === 'string') return 'image_failed';
+  if (hasImageIndex && typeof data['filename'] === 'string') return 'image_processing';
+
+  // Existing Axum backend events (legacy support)
   if ('session_id' in data && 'total_files' in data) return 'upload_started';
   if ('file_index' in data && 'file_name' in data && 'size_bytes' in data) return 'image_received';
   if ('file_index' in data && 'file_info' in data) return 'image_validation_success';
@@ -35,11 +42,45 @@ function getEventTypeFromData(data: OcrEventData): string | null {
   return null;
 }
 
+function normalizeEventData(data: OcrEventData, totalFiles: number): OcrEventData {
+  const normalized: OcrEventData = { ...data };
+
+  const imageIndex = normalized['image_index'];
+  if (typeof imageIndex === 'number' && typeof normalized['file_index'] !== 'number') {
+    normalized['file_index'] = imageIndex;
+  }
+
+  const filename = normalized['filename'];
+  if (typeof filename === 'string' && typeof normalized['file_name'] !== 'string') {
+    normalized['file_name'] = filename;
+  }
+
+  const message = normalized['message'];
+  if (typeof message === 'string' && typeof normalized['error_message'] !== 'string') {
+    normalized['error_message'] = message;
+  }
+
+  const processed = normalized['processed'];
+  if (typeof processed === 'number' && typeof normalized['total_processed'] !== 'number') {
+    normalized['total_processed'] = processed;
+  }
+
+  if (typeof normalized['total_files'] !== 'number' && totalFiles > 0) {
+    normalized['total_files'] = totalFiles;
+  }
+
+  if (typeof normalized['timestamp'] !== 'string') {
+    normalized['timestamp'] = new Date().toISOString();
+  }
+
+  return normalized;
+}
+
 /**
  * Helper function to check if event type indicates completion
  */
 function isCompletionEvent(eventType: string): boolean {
-  return ['processing_complete', 'processing_error'].includes(eventType);
+  return ['processing_complete', 'processing_error', 'finished'].includes(eventType);
 }
 
 /**
@@ -49,6 +90,7 @@ export function useOcrProcessing(): UseOcrProcessingReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [events, setEvents] = useState<OcrEvent[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const totalFilesRef = useRef(0);
 
   const clearEvents = useCallback(() => {
     setEvents([]);
@@ -70,11 +112,23 @@ export function useOcrProcessing(): UseOcrProcessingReturn {
     setIsProcessing(true);
     clearEvents();
 
+    totalFilesRef.current = files.length;
+    const startTimestamp = new Date().toISOString();
+    setEvents(() => [
+      {
+        type: 'upload_started',
+        data: {
+          total_files: totalFilesRef.current,
+          timestamp: startTimestamp,
+        },
+      },
+    ]);
+
     try {
       // First, upload the files to get the session started
       const formData = new FormData();
       files.forEach(file => {
-        formData.append('images', file);
+        formData.append('files', file);
       });
 
       // Close any existing EventSource
@@ -111,31 +165,35 @@ export function useOcrProcessing(): UseOcrProcessingReturn {
 
       const decoder = new TextDecoder();
       let buffer = '';
+      let shouldStop = false;
 
       try {
-        while (true) {
+        while (!shouldStop) {
           const { done, value } = await reader.read();
 
-          if (done) break;
+          if (done) {
+            break;
+          }
 
           buffer += decoder.decode(value, { stream: true });
 
           // Process complete SSE messages
           const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+          buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
 
           let currentEventType = '';
 
-          for (const line of lines) {
-            if (line.trim() === '') continue; // Skip empty lines
+          for (const rawLine of lines) {
+            const sanitizedLine = rawLine.trimEnd();
+            if (sanitizedLine.trim() === '') continue; // Skip empty lines
 
-            if (line.startsWith('event: ')) {
-              currentEventType = line.substring(7).trim();
+            if (sanitizedLine.startsWith('event:')) {
+              currentEventType = sanitizedLine.substring(6).trim();
               continue;
             }
 
-            if (line.startsWith('data: ')) {
-              const eventData = line.substring(6).trim();
+            if (sanitizedLine.startsWith('data:')) {
+              const eventData = sanitizedLine.substring(5).trim();
 
               try {
                 const rawData = JSON.parse(eventData) as unknown;
@@ -144,26 +202,27 @@ export function useOcrProcessing(): UseOcrProcessingReturn {
                   continue;
                 }
 
-                const parsedData = rawData;
+                const normalizedData = normalizeEventData(rawData, totalFilesRef.current);
                 const parsedType =
-                  typeof parsedData.type === 'string' ? parsedData.type : null;
+                  typeof normalizedData['type'] === 'string'
+                    ? String(normalizedData['type'])
+                    : null;
                 const eventType =
                   currentEventType ||
                   parsedType ||
-                  getEventTypeFromData(parsedData) ||
+                  getEventTypeFromData(normalizedData) ||
                   'unknown';
 
                 const event: OcrEvent = {
                   type: eventType,
-                  data: parsedData
+                  data: normalizedData,
                 };
 
                 setEvents(prev => [...prev, event]);
 
-                // Check if processing is complete
                 if (isCompletionEvent(event.type)) {
-                  setIsProcessing(false);
-                  return; // Exit the function
+                  shouldStop = true;
+                  break;
                 }
               } catch (e) {
                 console.warn('Failed to parse SSE data:', eventData, e);
@@ -174,6 +233,9 @@ export function useOcrProcessing(): UseOcrProcessingReturn {
       } finally {
         reader.releaseLock();
       }
+
+      setIsProcessing(false);
+      totalFilesRef.current = 0;
 
     } catch (error) {
       console.error('OCR processing error:', error);
