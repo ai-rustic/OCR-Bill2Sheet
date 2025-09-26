@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy import text
-import os
 import pathlib
 
 from .database import DatabaseSessionDep
@@ -46,9 +45,17 @@ async def static_files(file_name: str):
     if file_name.startswith("api/") or file_name in ["health", "docs", "redoc", "openapi.json"]:
         return {"error": "Not found"}
 
-    file_path = FRONTEND_DIR / file_name
+    file_path = FRONTEND_DIR / pathlib.Path(file_name)
+
+    # Serve exact file matches
     if file_path.exists() and file_path.is_file():
         return FileResponse(file_path)
+
+    # Support directory-style routes (e.g. /bills -> /bills/index.html)
+    if file_path.exists() and file_path.is_dir():
+        index_file = file_path / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
 
     # For frontend routing (bills/, 404/, etc.), serve index.html
     index_path = FRONTEND_DIR / "index.html"
